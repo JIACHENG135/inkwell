@@ -30,8 +30,7 @@ image.
 
 ## Demo
 
-<!-- TODO: replace with the actual demo link/embed once recorded -->
-https://github.com/jiachliu666/inkwell/assets/demo-placeholder
+![Demo](./demo.gif)
 
 Watch rm-agent answer a handwritten question and sketch a drawing request,
 both written back in the tablet's own pen strokes.

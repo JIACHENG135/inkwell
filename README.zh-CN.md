@@ -22,8 +22,7 @@
 
 ## 演示
 
-<!-- TODO: 录好 demo 后替换成实际链接/嵌入 -->
-https://github.com/jiachliu666/inkwell/assets/demo-placeholder
+![演示](./demo.gif)
 
 观看 rm-agent 回答手写问题、以及按要求画图，两种效果都是用平板自己的笔迹"写"回页面的。
 
