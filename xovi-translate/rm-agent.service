@@ -1,0 +1,14 @@
+[Unit]
+Description=rm-agent
+After=xovi-start.service xochitl.service
+Requires=xovi-start.service xochitl.service
+
+[Service]
+Type=simple
+ExecStart=/home/root/rm-agent
+EnvironmentFile=/home/root/.config/rm-agent.env
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

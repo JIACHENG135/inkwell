@@ -1,0 +1,13 @@
+[Unit]
+Description=Activate XOVI (LD_PRELOAD hook) before xochitl starts
+DefaultDependencies=no
+After=local-fs.target home.mount
+Requires=local-fs.target home.mount
+
+[Service]
+Type=oneshot
+ExecStart=/home/root/xovi/start
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

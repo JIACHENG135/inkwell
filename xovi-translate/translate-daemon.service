@@ -1,0 +1,14 @@
+[Unit]
+Description=translate_daemon (three-finger-press XOVI translate popup)
+After=xovi-start.service xochitl.service goMarkableStream.service
+Requires=xovi-start.service xochitl.service goMarkableStream.service
+
+[Service]
+Type=simple
+ExecStart=/home/root/translate_daemon
+EnvironmentFile=/home/root/.config/rm-agent.env
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

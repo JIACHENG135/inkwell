@@ -1,0 +1,296 @@
+AFFECT /qml/device/view/documentview/SceneViewGestures.qml
+IMPORT net.asivery.CommandExecutor 1.0
+    TRAVERSE TouchArea
+        LOCATE BEFORE ALL
+    INSERT {
+        TouchAreaClickFilter {
+            id: translateGestureFilter
+            palmAreaThreshold: touchArea.tapPalmThreshold
+            enabled: !touchArea.panAndZoomOnly
+            fingers: 3
+            onClick: {
+                translatePopup.originalText = "";
+                translatePopup.translationText = "";
+                translatePopup.exampleText = "";
+                translatePopup.exampleTranslationText = "";
+                translatePopup.lastSeq = translatePopup.readSeq();
+                translatePopup.state = "loading";
+                translatePopup.x = (touchArea.width - translatePopup.width) / 2;
+                translatePopup.y = touchArea.height * 0.3;
+                translatePopup.visible = true;
+                translateTriggerCmd.executeCommand("/bin/touch", ["/home/root/xovi/exthome/translate/trigger"]);
+                console.log("translate: gesture fired, trigger touched");
+                translatePollTimer.elapsedMs = 0;
+                translatePollTimer.start();
+            }
+        }
+
+        CommandExecutor {
+            id: translateTriggerCmd
+        }
+
+        FontLoader {
+            id: translateFontLoader
+            source: "file:///home/root/xovi/exthome/translate/NotoSansSC.ttf"
+        }
+
+        // A separate statically-instanced Bold-weight font file, not just
+        // font.bold:true over the variable-weight regular font above —
+        // synthetic/variable-axis bold rendered visibly too thin on
+        // device, a real bold face reads much more solid on e-ink.
+        FontLoader {
+            id: translateBoldFontLoader
+            source: "file:///home/root/xovi/exthome/translate/NotoSansSC-Bold.ttf"
+        }
+
+        Rectangle {
+            id: translatePopup
+            visible: false
+            state: "loading"
+            property int lastSeq: 0
+            property string originalText: ""
+            property string translationText: ""
+            property string exampleText: ""
+            property string exampleTranslationText: ""
+            // A whole marked sentence/paragraph comes back with no
+            // EXAMPLE field (see prompts::TRANSLATE_PROMPT case B) — use
+            // that as the signal to switch from the compact
+            // dictionary-card layout to a wider, plain-weight passage
+            // layout instead of a huge bolded word.
+            property bool longMode: state === "done" && exampleText.length === 0 && translationText.length > 12
+            z: 1000
+            radius: 20
+            color: "white"
+            border.color: "#c0c0c0"
+            border.width: 1.5
+            width: state === "loading" ? 220 : Math.min(touchArea.width * (translatePopup.longMode ? 0.8 : 0.6), translatePopup.longMode ? 820 : 640)
+            height: state === "loading" ? loadingRow.implicitHeight + 40 : popupColumn.implicitHeight + 48
+
+            function readResultFile() {
+                var xhr = new XMLHttpRequest();
+                try {
+                    xhr.open("GET", "file:///home/root/xovi/exthome/translate/result.txt", false);
+                    xhr.send();
+                    return xhr.responseText || "";
+                } catch (e) {
+                    return "";
+                }
+            }
+
+            function readSeq() {
+                var raw = readResultFile();
+                var n = parseInt(raw.split("\n")[0]);
+                return isNaN(n) ? 0 : n;
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                drag.target: translatePopup
+                drag.axis: Drag.XAndYAxis
+                drag.minimumX: 0
+                drag.maximumX: touchArea.width - translatePopup.width
+                drag.minimumY: 0
+                drag.maximumY: touchArea.height - translatePopup.height
+                onClicked: {
+                    translatePopup.visible = false;
+                    translatePollTimer.stop();
+                    translateAutoCloseTimer.stop();
+                }
+            }
+
+            Row {
+                id: loadingRow
+                visible: translatePopup.state === "loading"
+                anchors.centerIn: parent
+                spacing: 12
+
+                Item {
+                    // An 8-ray sunburst that rotates in discrete 45°
+                    // steps — same spinning-icon concept as rm-agent's
+                    // own corner-tap "thinking" indicator (see
+                    // spinner.rs), reimplemented in plain QML instead of
+                    // inked pen strokes. Discrete steps rather than a
+                    // smooth rotation animation since e-ink can't
+                    // usefully render continuous motion anyway.
+                    id: spinnerIcon
+                    width: 30
+                    height: 30
+
+                    Repeater {
+                        model: 8
+                        Rectangle {
+                            width: 3
+                            height: 13
+                            radius: 1.5
+                            color: "#222222"
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.verticalCenter
+                            transformOrigin: Item.Bottom
+                            rotation: index * 45
+                        }
+                    }
+
+                    Timer {
+                        interval: 150
+                        running: translatePopup.state === "loading" && translatePopup.visible
+                        repeat: true
+                        onTriggered: spinnerIcon.rotation = (spinnerIcon.rotation + 45) % 360
+                    }
+                }
+
+                Text {
+                    font.family: translateBoldFontLoader.name
+                    font.pixelSize: 24
+                    color: "#222222"
+                    text: "翻译中…"
+                }
+            }
+
+            Column {
+                id: popupColumn
+                visible: translatePopup.state !== "loading"
+                x: 28
+                y: 24
+                width: parent.width - 56
+                spacing: 12
+
+                Item {
+                    width: parent.width
+                    height: Math.max(headerLabel.implicitHeight, closeBtn.implicitHeight)
+
+                    Text {
+                        id: headerLabel
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "英译中"
+                        font.family: translateBoldFontLoader.name
+                        font.pixelSize: 22
+                        color: "#222222"
+                    }
+
+                    Text {
+                        id: closeBtn
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "×"
+                        font.family: translateBoldFontLoader.name
+                        font.pixelSize: 32
+                        color: "#222222"
+
+                        MouseArea {
+                            anchors.fill: parent
+                            anchors.margins: -12
+                            onClicked: {
+                                translatePopup.visible = false;
+                                translatePollTimer.stop();
+                                translateAutoCloseTimer.stop();
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: parent.width
+                    height: 1
+                    color: "#e2e2e2"
+                }
+
+                Text {
+                    id: originalTextEl
+                    visible: translatePopup.originalText.length > 0
+                    width: parent.width
+                    text: translatePopup.originalText
+                    font.family: translateBoldFontLoader.name
+                    font.pixelSize: 26
+                    color: "#111111"
+                    wrapMode: Text.WordWrap
+                }
+
+                Text {
+                    id: translationTextEl
+                    width: parent.width
+                    text: translatePopup.state === "loading" ? "翻译中…" : translatePopup.translationText
+                    font.family: translateBoldFontLoader.name
+                    font.pixelSize: !translatePopup.longMode ? 48 : (translatePopup.translationText.length > 150 ? 26 : 32)
+                    color: "black"
+                    wrapMode: Text.WordWrap
+                }
+
+                Rectangle {
+                    visible: translatePopup.exampleText.length > 0
+                    width: parent.width
+                    height: 1
+                    color: "#eeeeee"
+                }
+
+                Text {
+                    id: exampleTextEl
+                    visible: translatePopup.exampleText.length > 0
+                    width: parent.width
+                    text: translatePopup.exampleText
+                    textFormat: Text.RichText
+                    font.family: translateBoldFontLoader.name
+                    font.pixelSize: 25
+                    color: "#000000"
+                    wrapMode: Text.WordWrap
+                }
+
+                Text {
+                    id: exampleTranslationTextEl
+                    visible: translatePopup.exampleTranslationText.length > 0
+                    width: parent.width
+                    text: translatePopup.exampleTranslationText
+                    textFormat: Text.RichText
+                    font.family: translateBoldFontLoader.name
+                    font.pixelSize: 23
+                    color: "#1a1a1a"
+                    wrapMode: Text.WordWrap
+                }
+            }
+        }
+
+        Timer {
+            id: translatePollTimer
+            interval: 300
+            repeat: true
+            property int elapsedMs: 0
+            onTriggered: {
+                elapsedMs += interval;
+                var raw = translatePopup.readResultFile();
+                var lines = raw.split("\n");
+                var seq = parseInt(lines[0]);
+                if (!isNaN(seq) && seq > translatePopup.lastSeq) {
+                    translatePopup.originalText = lines.length > 1 ? lines[1] : "";
+                    translatePopup.translationText = lines.length > 2 ? lines[2] : "";
+                    translatePopup.exampleText = lines.length > 3 ? lines[3] : "";
+                    translatePopup.exampleTranslationText = lines.length > 4 ? lines.slice(4).join("\n") : "";
+                    translatePopup.state = "done";
+                    translatePopup.x = (touchArea.width - translatePopup.width) / 2;
+                    stop();
+                    translateAutoCloseTimer.start();
+                    return;
+                }
+                if (elapsedMs > 15000) {
+                    translatePopup.originalText = "";
+                    translatePopup.translationText = "(超时，请重试)";
+                    translatePopup.exampleText = "";
+                    translatePopup.exampleTranslationText = "";
+                    translatePopup.state = "done";
+                    translatePopup.x = (touchArea.width - translatePopup.width) / 2;
+                    stop();
+                    translateAutoCloseTimer.start();
+                }
+            }
+        }
+
+        Timer {
+            id: translateAutoCloseTimer
+            interval: 12000
+            repeat: false
+            onTriggered: {
+                translatePopup.visible = false;
+            }
+        }
+    }
+    END TRAVERSE
+END AFFECT

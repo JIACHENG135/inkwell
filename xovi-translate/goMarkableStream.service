@@ -1,0 +1,11 @@
+[Unit]
+Description=goMarkableStream Server
+After=xovi-start.service xochitl.service
+Requires=xovi-start.service xochitl.service
+
+[Service]
+ExecStart=/home/root/goMarkableStream
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
