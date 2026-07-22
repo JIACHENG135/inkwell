@@ -33,12 +33,14 @@ image. Runs on both the **reMarkable 2** and the **reMarkable Paper Pro**.
   reMarkable's own UI and restarts automatically if it crashes, including
   automatically refreshing its login session if the device stays on for
   days at a stretch.
-- **[Experimental] Three-finger translate** *(reMarkable 2 only)* — circle,
-  underline, or box a word, phrase, or whole passage and three-finger-tap
-  to pop up its Chinese translation right on the page, with an example
-  sentence for single words/phrases. See [below](#experimental-three-finger-translate-remarkable-2)
-  — this one's built on a third-party framework and comes with real
-  caveats, read before installing.
+- **[Experimental] Three-finger translate** *(reMarkable 2 and Paper Pro)* —
+  circle, underline, or box a word, phrase, or whole passage and
+  three-finger-tap to pop up its Chinese translation right on the page,
+  with an example sentence for single words/phrases. See
+  [below](#experimental-three-finger-translate-remarkable-2) (rM2) or
+  [below](#experimental-three-finger-translate-remarkable-paper-pro)
+  (Paper Pro) — this one's built on a third-party framework and comes
+  with real caveats, read before installing.
 
 ## Demo
 
@@ -231,7 +233,10 @@ reMarkable supports or ships. That means real, specific risks:
   patch yourself (steps below) — using the wrong hash table's patch
   can produce anything from "does nothing" to the crash-loop above, so
   don't skip the `xovi/debug` check regardless of which firmware you're on.
-- **reMarkable 2 only, for now.** Not yet ported to Paper Pro.
+- **This section is reMarkable 2 only.** Paper Pro has its own separate
+  section further down — the two devices need different XOVI builds and
+  a different pre-hashed patch (hash tables are firmware/build-specific,
+  not just version-specific), so don't mix files between the two.
 - **`xovi/start` doesn't survive a reboot on its own** (it's a tmpfs
   mount) — the install below adds a small systemd unit
   (`xovi-start.service`) that reruns it automatically at boot, so this
@@ -380,3 +385,171 @@ the **×** to dismiss it early.
 - **Tablet stuck "restarting" / xochitl won't stay up**: `ssh root@<device-ip> '/home/root/xovi/stock'` immediately reverts to plain, unpatched xochitl — the tablet is safe as soon as that finishes.
 - **Screenshots fail with a 500 error**: `ssh root@<device-ip> 'systemctl restart goMarkableStream'` — it needs restarting if it ever grabs xochitl's process id before XOVI finishes patching it.
 - **Popup shows Chinese as blank boxes**: the fonts didn't make it to `/home/root/xovi/exthome/translate/` — re-run the `scp` in step 3.
+
+## Experimental: Three-Finger Translate (reMarkable Paper Pro)
+
+Same feature as the reMarkable 2 section above (circle/underline/box
+something, three-finger-tap, get a translation popup) — this section is
+just the Paper Pro-specific install, which differs in three ways: a
+different (aarch64) XOVI build, and Paper Pro's usual persistence quirk
+(`/etc` is a volatile overlay that resets every boot, so systemd units
+have to live in `/lib/systemd/system` instead — see the base install
+section above for why).
+
+**Read the reMarkable 2 section's risk callouts above first** — they
+all apply here too (crash-loop risk if the patch is wrong, firmware/hash
+table lock-in, `xovi/start` not surviving reboot on its own). One more
+Paper Pro-specific gotcha on top of those:
+
+- **goMarkableStream can grab a bad screenshot source on boot.** Paper
+  Pro's screen capture goes through `/dev/dri/card0` (DRM/KMS), which
+  isn't always ready the instant goMarkableStream starts — when that
+  race loses, goMarkableStream doesn't crash, it just serves a
+  black/garbled "screenshot" forever until restarted, which silently
+  breaks translation (every round sees "no new content"). The
+  `goMarkableStream.service` in this folder already works around this
+  (waits for the `dev-dri-card0.device` unit specifically, plus a small
+  fixed delay) — if you assemble your own unit file instead of using the
+  one here, keep that ordering. Tested specifically with the
+  `gomarkablestream-RMPRO-lite` build (not the plain `RMPRO` one) —
+  that's what's confirmed working, so if you're installing
+  goMarkableStream fresh for this, grab that asset.
+
+### What's in this folder
+
+Same idea as the reMarkable 2 folder, aarch64 build:
+
+| File | Purpose |
+| --- | --- |
+| `translate-daemon-v0.1.0-aarch64-unknown-linux-musl` | The companion background service (aarch64 build). |
+| `three_finger_translate.paperpro-fw3.27.3.0.qmd` | The XOVI patch, pre-hashed for Paper Pro's firmware 3.27.3.0 build specifically — **not interchangeable with the reMarkable 2 folder's pre-hashed file**, even though both report the same firmware version string, because the two devices' xochitl builds hash differently (confirmed: different total hash table entry counts). If your Paper Pro is on a different firmware, re-hash `three_finger_translate.source.qmd` yourself (same procedure as the rM2 section, just run `rebuild_hashtable` and `qmldiff` on this device instead). |
+| `three_finger_translate.source.qmd` | Same plain-text source as the rM2 folder (device-independent) — for re-hashing against a different firmware. |
+| `NotoSansSC.ttf`, `NotoSansSC-Bold.ttf` | Same fonts as the rM2 folder — architecture-independent. |
+| `xovi-start.service` | Same as the rM2 folder — reruns `xovi/start` at boot. |
+| `translate-daemon.service` | Same as the rM2 folder. |
+| `goMarkableStream.service`, `rm-agent.service` | Paper Pro-specific versions: ordered after XOVI has patched xochitl (same reasoning as the rM2 folder) **and** after `dev-dri-card0.device` is ready (the goMarkableStream fix described above). These replace your existing Paper Pro `goMarkableStream.service`/`rm-agent.service` from the base install. |
+
+### Prerequisites
+
+- The core rm-agent feature already installed and working on Paper Pro
+  (see the Paper Pro install section above) — this reuses its Gemini API
+  key and screenshot login.
+- SSH access to the tablet.
+
+### 1. Install the XOVI framework (aarch64 build)
+
+Skip this if `/home/root/xovi` already exists.
+
+```sh
+curl -sL -o xovi-aarch64.tar.gz "$(curl -sL https://api.github.com/repos/asivery/rm-xovi-extensions/releases/latest \
+  | grep -o '"browser_download_url": *"[^"]*xovi-aarch64[^"]*"' | head -1 | sed -E 's/.*"(https[^"]+)"/\1/')"
+mkdir xovi && tar -xzf xovi-aarch64.tar.gz -C xovi --strip-components=1
+scp -r xovi root@<device-ip>:/home/root/xovi
+
+ssh root@<device-ip> '
+ln -sf /home/root/xovi/extensions.d /home/root/xovi/services/xochitl.service/extensions.d
+ln -sf /home/root/xovi/exthome /home/root/xovi/services/xochitl.service/exthome
+'
+```
+
+Activate the extension needed on top of what ships active by default:
+
+```sh
+ssh root@<device-ip> '
+mv /home/root/xovi/inactive-extensions/qt-command-executor.so /home/root/xovi/extensions.d/ 2>/dev/null
+ls /home/root/xovi/extensions.d/
+'
+```
+
+### 2. Get the hash table for your firmware
+
+```sh
+ssh root@<device-ip> "cat /etc/version"
+```
+
+If you're on the same build this was tested against, skip to step 3.
+Otherwise, rebuild the hash table and re-hash the source patch — same
+procedure as the reMarkable 2 section:
+
+```sh
+ssh -t root@<device-ip> '/home/root/xovi/rebuild_hashtable'
+scp root@<device-ip>:/home/root/xovi/exthome/qt-resource-rebuilder/hashtab ./hashtab
+ssh root@<device-ip> 'systemctl start xochitl'
+
+git clone --depth 1 https://github.com/asivery/qmldiff.git
+(cd qmldiff && cargo build --release)
+
+cp three_finger_translate.source.qmd my-translate.qmd
+./qmldiff/target/release/qmldiff hash-diffs ./hashtab my-translate.qmd
+```
+
+Use `my-translate.qmd` in place of
+`three_finger_translate.paperpro-fw3.27.3.0.qmd` below.
+
+### 3. Install the patch, fonts, and daemon
+
+```sh
+ssh root@<device-ip> 'mkdir -p /home/root/xovi/exthome/translate'
+scp three_finger_translate.paperpro-fw3.27.3.0.qmd \
+    root@<device-ip>:/home/root/xovi/exthome/qt-resource-rebuilder/three_finger_translate.qmd
+scp NotoSansSC.ttf NotoSansSC-Bold.ttf root@<device-ip>:/home/root/xovi/exthome/translate/
+
+scp translate-daemon-v0.1.0-aarch64-unknown-linux-musl root@<device-ip>:/home/root/translate_daemon
+ssh root@<device-ip> 'chmod +x /home/root/translate_daemon'
+```
+
+Systemd units go in `/lib/systemd/system` here, not `/etc` (see the base
+Paper Pro install section for why):
+
+```sh
+ssh root@<device-ip> 'mount -o remount,rw /'
+scp xovi-start.service translate-daemon.service goMarkableStream.service rm-agent.service \
+    root@<device-ip>:/lib/systemd/system/
+ssh root@<device-ip> '
+mkdir -p /lib/systemd/system/xochitl.service.wants
+ln -sf /lib/systemd/system/xovi-start.service /lib/systemd/system/xochitl.service.wants/xovi-start.service
+ln -sf /lib/systemd/system/translate-daemon.service /lib/systemd/system/xochitl.service.wants/translate-daemon.service
+mount -o remount,ro /
+systemctl daemon-reload
+'
+```
+
+### 4. Verify with `xovi/debug` before going persistent — do not skip this
+
+Same as the reMarkable 2 section:
+
+```sh
+ssh root@<device-ip> 'systemctl stop xochitl'
+ssh root@<device-ip> '/home/root/xovi/debug'
+```
+
+Watch for `Cannot assign to non-existent property` or `Type ...
+unavailable`. If you see either, Ctrl-C, run
+`ssh root@<device-ip> '/home/root/xovi/stock'`, and don't proceed.
+Otherwise Ctrl-C once the UI looks normal and continue.
+
+### 5. Go persistent
+
+```sh
+ssh root@<device-ip> '
+/home/root/xovi/start
+systemctl restart goMarkableStream rm-agent translate-daemon
+systemctl is-active xochitl goMarkableStream rm-agent translate-daemon xovi-start
+'
+```
+
+All five should print `active`. A reboot test is worthwhile the first
+time — this is exactly the scenario the `dev-dri-card0.device` fix above
+is for, so it's worth confirming translation still works right after a
+fresh boot, not just right now.
+
+### Using it
+
+Same as the reMarkable 2 section: mark first (circle/underline/box),
+*then* three-finger-tap.
+
+### If something goes wrong
+
+- **Tablet stuck "restarting" / xochitl won't stay up**: `ssh root@<device-ip> '/home/root/xovi/stock'`.
+- **Translation always says "no new content" / popup never shows real text**: check for a black/garbled screenshot — `ssh root@<device-ip> 'systemctl restart goMarkableStream'` and try again. If it keeps happening after every boot, confirm you're using the `goMarkableStream.service` from this folder (not a plain one without the `dev-dri-card0.device` ordering).
+- **Popup shows Chinese as blank boxes**: re-run the font `scp` in step 3.

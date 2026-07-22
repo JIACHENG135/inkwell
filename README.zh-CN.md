@@ -24,10 +24,11 @@
 - **无需电脑、无需数据线** — 完全在设备本地以后台服务运行，不用同步到电脑，也不需要任何导入步骤。
 - **开机自启** — 以 systemd 服务安装，随 reMarkable 系统自身界面启动后运行，崩溃后自动重启；
   设备连续开机好几天也没关系，登录状态会在过期时自动刷新。
-- **【实验性】三指划词翻译** *(仅 reMarkable 2)* — 圈一个词、画一条下划线、或者框选一整段话，
-  三指点一下屏幕，翻译结果会直接弹窗显示在页面上；如果标记的是单词/短语还会附带一个例句。
-  详见[下文](#实验性功能三指划词翻译-remarkable-2) —— 这个功能是基于第三方框架实现的，
-  有一些需要了解的风险，安装前请务必阅读完整说明。
+- **【实验性】三指划词翻译** *(reMarkable 2 和 Paper Pro 都支持)* — 圈一个词、画一条下划线、
+  或者框选一整段话，三指点一下屏幕，翻译结果会直接弹窗显示在页面上；如果标记的是单词/短语
+  还会附带一个例句。详见 [rM2 章节](#实验性功能三指划词翻译-remarkable-2) 或
+  [Paper Pro 章节](#实验性功能三指划词翻译-remarkable-paper-pro) —— 这个功能是基于第三方框架
+  实现的，有一些需要了解的风险，安装前请务必阅读完整说明。
 
 ## 演示
 
@@ -201,7 +202,9 @@ reMarkable 官方不支持也不提供这个框架。这意味着有一些实实
   **固件 3.27.3.0** 构建和测试的。如果你的设备是别的固件版本，需要自己重新生成哈希表、
   重新给补丁做哈希（步骤见下文）——用错哈希表生成的补丁，轻则"完全不生效"，
   重则复现上面说的崩溃循环，所以不管你是哪个固件版本，`xovi/debug` 这步验证都不能跳过。
-- **目前只支持 reMarkable 2。** 还没适配 Paper Pro。
+- **这一节只讲 reMarkable 2。** Paper Pro 有单独一节在后面——两个设备
+  需要不同的 XOVI 构建、不同的预哈希补丁（哈希表是跟具体固件构建绑定的，
+  不只是版本号一样就行），两边的文件不要混用。
 - **`xovi/start` 不会自动在重启后生效**（它用的是 tmpfs 挂载）——下面的安装步骤加了一个
   很小的 systemd 单元（`xovi-start.service`），让它在每次开机时自动重新执行一遍，
   所以不需要你手动记得做这件事，但确实是多了一个每次开机都会跑的东西。
@@ -347,3 +350,158 @@ systemctl is-active xochitl goMarkableStream rm-agent translate-daemon xovi-star
   如果它在 XOVI 打完补丁之前就抢先记录了 xochitl 的进程号，就需要重启一下才能恢复。
 - **弹窗里中文显示成方块**：字体没传到 `/home/root/xovi/exthome/translate/`，
   重新执行一遍第 3 步里的 `scp` 命令。
+
+## 【实验性功能】三指划词翻译 (reMarkable Paper Pro)
+
+跟上面 reMarkable 2 章节是同一个功能（圈/画线/框选内容，三指点一下，弹窗出翻译），
+这一节只是 Paper Pro 专属的安装步骤，跟 rM2 有三点不一样：不同的（aarch64）XOVI
+构建，以及 Paper Pro 那个老熟悉的持久化坑（`/etc` 是每次重启都清空的 overlay
+文件系统，systemd 单元得放到 `/lib/systemd/system`——原因见上面基础安装章节）。
+
+**请先看完上面 reMarkable 2 章节里的风险提示**，那些全都适用（补丁写错导致崩溃循环、
+固件/哈希表绑定、`xovi/start` 不会自动扛过重启）。除此之外 Paper Pro 还有一个额外的坑：
+
+- **`goMarkableStream` 开机时可能抓到一个坏的截图源。** Paper Pro 的截图走的是
+  `/dev/dri/card0`（DRM/KMS），`goMarkableStream` 启动的那一刻这个设备不一定已经
+  就绪——一旦抢跑失败，`goMarkableStream` 不会崩溃，而是会一直提供一张纯黑/花屏的
+  "截图"，直到手动重启，这会让翻译功能悄悄失效（每一轮都显示"没有检测到新内容"）。
+  这个文件夹里的 `goMarkableStream.service` 已经做了规避（专门等 `dev-dri-card0.device`
+  这个 unit 就绪，再加一个小延迟）——如果你自己拼装 unit 文件而不是用这份，记得保留这个顺序。
+
+### 这个文件夹里有什么
+
+跟 reMarkable 2 那个文件夹思路一样，只是 aarch64 构建：
+
+| 文件 | 作用 |
+| --- | --- |
+| `translate-daemon-v0.1.0-aarch64-unknown-linux-musl` | 配套后台服务（aarch64 版）。 |
+| `three_finger_translate.paperpro-fw3.27.3.0.qmd` | 针对 Paper Pro 固件 3.27.3.0 这个具体构建预先哈希好的 XOVI 补丁——**跟 reMarkable 2 文件夹里那份预哈希文件不能互换**，虽然两边报的固件版本号字符串一样，但两个设备的 xochitl 构建哈希结果不一样（验证过：哈希表总条目数都不同）。如果你的 Paper Pro 是其他固件版本，需要自己重新给 `three_finger_translate.source.qmd` 做哈希（步骤跟 rM2 章节一样，只是 `rebuild_hashtable` 和 `qmldiff` 要在这台设备上跑）。 |
+| `three_finger_translate.source.qmd` | 跟 rM2 文件夹里的是同一份明文源码（跟设备无关）——用来针对其他固件重新哈希。 |
+| `NotoSansSC.ttf`、`NotoSansSC-Bold.ttf` | 跟 rM2 文件夹一样的字体——跟架构无关。 |
+| `xovi-start.service` | 跟 rM2 文件夹一样，开机自动重跑 `xovi/start`。 |
+| `translate-daemon.service` | 跟 rM2 文件夹一样。 |
+| `goMarkableStream.service`、`rm-agent.service` | Paper Pro 专属版本：排在 XOVI 给 xochitl 打完补丁之后（跟 rM2 文件夹同样的理由），**并且**排在 `dev-dri-card0.device` 就绪之后（上面说的 `goMarkableStream` 修复）。会覆盖掉你在基础安装里装的 Paper Pro 版 `goMarkableStream.service`/`rm-agent.service`。 |
+
+### 前置条件
+
+- 已经装好并且能正常工作的 rm-agent 核心功能（见上面 Paper Pro 安装章节）——
+  这个功能复用它的 Gemini API key 和截图登录逻辑。
+- 能 SSH 连上平板。
+
+### 1. 安装 XOVI 框架（aarch64 版）
+
+如果 `/home/root/xovi` 已经存在，跳过这步。
+
+```sh
+curl -sL -o xovi-aarch64.tar.gz "$(curl -sL https://api.github.com/repos/asivery/rm-xovi-extensions/releases/latest \
+  | grep -o '"browser_download_url": *"[^"]*xovi-aarch64[^"]*"' | head -1 | sed -E 's/.*"(https[^"]+)"/\1/')"
+mkdir xovi && tar -xzf xovi-aarch64.tar.gz -C xovi --strip-components=1
+scp -r xovi root@<设备IP>:/home/root/xovi
+
+ssh root@<设备IP> '
+ln -sf /home/root/xovi/extensions.d /home/root/xovi/services/xochitl.service/extensions.d
+ln -sf /home/root/xovi/exthome /home/root/xovi/services/xochitl.service/exthome
+'
+```
+
+激活默认没开的那个扩展（`qt-resource-rebuilder` 这个 build 默认已经是激活的）：
+
+```sh
+ssh root@<设备IP> '
+mv /home/root/xovi/inactive-extensions/qt-command-executor.so /home/root/xovi/extensions.d/ 2>/dev/null
+ls /home/root/xovi/extensions.d/
+'
+```
+
+### 2. 获取适配你固件版本的哈希表
+
+```sh
+ssh root@<设备IP> "cat /etc/version"
+```
+
+如果版本号跟这次测试用的一致，跳到第 3 步。否则重新生成哈希表、重新哈希源文件——
+步骤跟 reMarkable 2 章节一样：
+
+```sh
+ssh -t root@<设备IP> '/home/root/xovi/rebuild_hashtable'
+scp root@<设备IP>:/home/root/xovi/exthome/qt-resource-rebuilder/hashtab ./hashtab
+ssh root@<设备IP> 'systemctl start xochitl'
+
+git clone --depth 1 https://github.com/asivery/qmldiff.git
+(cd qmldiff && cargo build --release)
+
+cp three_finger_translate.source.qmd my-translate.qmd
+./qmldiff/target/release/qmldiff hash-diffs ./hashtab my-translate.qmd
+```
+
+接下来的步骤里把 `three_finger_translate.paperpro-fw3.27.3.0.qmd` 换成
+`my-translate.qmd`。
+
+### 3. 安装补丁、字体和后台服务
+
+```sh
+ssh root@<设备IP> 'mkdir -p /home/root/xovi/exthome/translate'
+scp three_finger_translate.paperpro-fw3.27.3.0.qmd \
+    root@<设备IP>:/home/root/xovi/exthome/qt-resource-rebuilder/three_finger_translate.qmd
+scp NotoSansSC.ttf NotoSansSC-Bold.ttf root@<设备IP>:/home/root/xovi/exthome/translate/
+
+scp translate-daemon-v0.1.0-aarch64-unknown-linux-musl root@<设备IP>:/home/root/translate_daemon
+ssh root@<设备IP> 'chmod +x /home/root/translate_daemon'
+```
+
+systemd 单元这次要放到 `/lib/systemd/system`，不是 `/etc`（原因见上面 Paper Pro
+基础安装章节）：
+
+```sh
+ssh root@<设备IP> 'mount -o remount,rw /'
+scp xovi-start.service translate-daemon.service goMarkableStream.service rm-agent.service \
+    root@<设备IP>:/lib/systemd/system/
+ssh root@<设备IP> '
+mkdir -p /lib/systemd/system/xochitl.service.wants
+ln -sf /lib/systemd/system/xovi-start.service /lib/systemd/system/xochitl.service.wants/xovi-start.service
+ln -sf /lib/systemd/system/translate-daemon.service /lib/systemd/system/xochitl.service.wants/translate-daemon.service
+mount -o remount,ro /
+systemctl daemon-reload
+'
+```
+
+### 4. 切换常驻模式之前，先用 `xovi/debug` 验证——这步不能跳过
+
+跟 reMarkable 2 章节一样：
+
+```sh
+ssh root@<设备IP> 'systemctl stop xochitl'
+ssh root@<设备IP> '/home/root/xovi/debug'
+```
+
+留意有没有 `Cannot assign to non-existent property` 或者
+`Type ... unavailable`。如果看到，Ctrl-C，执行
+`ssh root@<设备IP> '/home/root/xovi/stock'`，先别继续。
+如果界面看起来正常，Ctrl-C 退出后继续下一步。
+
+### 5. 切换到常驻模式
+
+```sh
+ssh root@<设备IP> '
+/home/root/xovi/start
+systemctl restart goMarkableStream rm-agent translate-daemon
+systemctl is-active xochitl goMarkableStream rm-agent translate-daemon xovi-start
+'
+```
+
+五个都应该显示 `active`。第一次装好后建议实际重启验证一下——上面那个
+`dev-dri-card0.device` 修复专门就是针对"重启之后"这个场景的，所以重启后再测一次
+翻译是否正常，而不只是现在测一次就完事。
+
+### 使用方法
+
+跟 reMarkable 2 章节一样：先标记（圈/画线/框选），再三指点一下。
+
+### 遇到问题怎么办
+
+- **平板卡在"正在重启"、xochitl 起不来**：`ssh root@<设备IP> '/home/root/xovi/stock'`。
+- **翻译一直显示"没有检测到新内容" / 弹窗内容不对**：先看看截图是不是纯黑/花屏——
+  `ssh root@<设备IP> 'systemctl restart goMarkableStream'` 之后再试一次。如果每次
+  重启都复现，确认你用的是这个文件夹里的 `goMarkableStream.service`（不是没有
+  `dev-dri-card0.device` 排序的普通版本）。
+- **弹窗里中文显示成方块**：重新执行一遍第 3 步里字体的 `scp` 命令。

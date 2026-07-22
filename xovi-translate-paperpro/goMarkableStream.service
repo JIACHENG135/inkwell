@@ -1,0 +1,18 @@
+[Unit]
+Description=goMarkableStream (screenshot/login API used by rm-agent)
+After=xovi-start.service xochitl.service dev-dri-card0.device
+Requires=xovi-start.service xochitl.service dev-dri-card0.device
+
+[Service]
+Type=simple
+WorkingDirectory=/home/root
+Environment=HOME=/home/root
+Environment=USER=root
+Environment=LANG=en_US.UTF-8
+ExecStartPre=/bin/sleep 2
+ExecStart=/home/root/goMarkableStream
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
