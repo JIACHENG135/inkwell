@@ -46,18 +46,37 @@
 | reMarkable 2 | `rm-agent-*-armv7-unknown-linux-musleabihf` | `rm-agent.service`、`rm-agent.env.example` |
 | reMarkable Paper Pro | `rm-agent-*-aarch64-unknown-linux-musl` | `rm-agent-paperpro.service`、`goMarkableStream.service`、`rm-agent.env.example` |
 
-## 安装教程 — reMarkable 2
+## 安装教程
+
+**推荐做法：让 AI 编程助手帮你装。** 把这个仓库克隆下来，用
+[Claude Code](https://claude.com/product/claude-code)（或者任何能读
+`SKILL.md` 并帮你跑 SSH 命令的 agent）打开它，直接叫它帮你装 rm-agent。
+它会读
+[`.claude/skills/install-rm-agent/SKILL.md`](.claude/skills/install-rm-agent/SKILL.md)，
+问你设备型号、IP 地址和 Gemini API key，然后把下面所有步骤都跑一遍——
+包括三指划词翻译功能需要的那些安全检查。跟下面手动步骤是同一套流程，
+只是不用你自己一条条敲命令了。
+
+想自己动手，或者手边没有 agent？下面的手动步骤原样保留。
+
+不管走哪条路，先准备好：
+
+- 一个能访问图像生成模型的 [Gemini API key](https://aistudio.google.com/apikey)。
+- **reMarkable 2**：开启 SSH——**设置 → 关于本机 → Copyrights and
+  licenses** 页面会显示设备的 root 密码；在 **设置 → 关于本机 → 通用**
+  里记下设备 IP（或去路由器管理页面查）。
+- **reMarkable Paper Pro**：打开开发者模式（**设置 → 通用 → Paper
+  Tablet → 软件 → 高级 → 开发者模式**，会重置设备并重新走一遍开机引导），
+  从 **设置 → 通用 → 帮助 → 关于 → 版权和许可**（GPLv3 Compliance 部分）
+  拿到 root 密码。默认只能走 USB 连 SSH——先 USB 连接，SSH 到
+  `10.11.99.1`，用密码登录，然后跑 `rm-ssh-over-wlan on` 开启 WiFi SSH。
+
+<details>
+<summary><b>手动安装 — reMarkable 2</b></summary>
 
 这个二进制文件是专门给 reMarkable 2 本身编译的（ARM 架构、musl libc）——
 **不能**直接在你的 Mac 或 PC 上运行。先在电脑上下载好，再通过 SSH 拷贝到平板上，
 设置成后台服务运行。
-
-开始之前：
-
-- 在 reMarkable 上开启 SSH：**设置 → 关于本机 → Copyrights and licenses**
-  页面会显示设备的 root 密码。同时在 **设置 → 关于本机 → 通用** 里记下设备的
-  IP 地址（或者去路由器管理页面查）。
-- 准备一个能访问图像生成模型的 [Gemini API key](https://aistudio.google.com/apikey)。
 
 ### macOS 下
 
@@ -109,7 +128,10 @@ ssh remarkable 'journalctl -u rm-agent -f'
 
 之后用笔点一下屏幕左下角的图标提问。
 
-## 安装教程 — reMarkable Paper Pro
+</details>
+
+<details>
+<summary><b>手动安装 — reMarkable Paper Pro</b></summary>
 
 Paper Pro 需要两个 reMarkable 2 不需要的东西：
 
@@ -121,16 +143,6 @@ Paper Pro 需要两个 reMarkable 2 不需要的东西：
   overlay 文件系统，每次重启都会被清空——放进 `/etc/systemd/system` 里的东西重启就没了。
   service 文件得放到 `/lib/systemd/system`（跟 xochitl 自己的文件同一个位置），
   这意味着需要临时把平时只读的根文件系统改成可读写来安装。
-
-开始之前：
-
-- 打开开发者模式：**设置 → 通用 → Paper Tablet → 软件 → 高级 → 开发者模式**
-  （这会重置设备，需要重新走一遍开机引导流程）。
-- 获取 root 密码：**设置 → 通用 → 帮助 → 关于 → 版权和许可**，翻到 GPLv3
-  Compliance 部分。
-- 默认只能通过 USB 连接 SSH。先用 USB 连接，SSH 到 `10.11.99.1`，用上面的密码登录。
-  进去之后跑一下 `rm-ssh-over-wlan on`，之后就能走 WiFi SSH 了，后面的步骤会方便很多。
-- 准备一个能访问图像生成模型的 [Gemini API key](https://aistudio.google.com/apikey)。
 
 ### 1. 安装 goMarkableStream
 
@@ -180,6 +192,8 @@ ssh root@<设备IP> 'journalctl -u rm-agent -f'
 
 之后用笔点一下页面上的角落图标提问。
 
+</details>
+
 ## 【实验性功能】三指划词翻译 (reMarkable 2)
 
 圈一个词、画一条下划线、或者框选一整段话，然后三指点一下屏幕——弹窗会显示中文翻译
@@ -210,6 +224,15 @@ reMarkable 官方不支持也不提供这个框架。这意味着有一些实实
   所以不需要你手动记得做这件事，但确实是多了一个每次开机都会跑的东西。
 
 如果这些风险对你的平板来说顾虑太大，可以跳过这一节——上面的 rm-agent 核心功能完全不需要这些。
+
+**推荐做法：让 AI 编程助手帮你装。** 上面提到的
+[`.claude/skills/install-rm-agent/SKILL.md`](.claude/skills/install-rm-agent/SKILL.md)
+同样覆盖这个功能——它会先把上面这些风险明确讲给你听，等你确认之后才会碰 XOVI，
+并且会自己跑 `xovi/debug` 这步安全检查，确认没问题才会切到常驻模式。
+如果你想自己动手，下面的手动步骤原样保留。
+
+<details>
+<summary><b>手动安装 — reMarkable 2 三指划词翻译</b></summary>
 
 ### 这个文件夹里有什么
 
@@ -351,6 +374,8 @@ systemctl is-active xochitl goMarkableStream rm-agent translate-daemon xovi-star
 - **弹窗里中文显示成方块**：字体没传到 `/home/root/xovi/exthome/translate/`，
   重新执行一遍第 3 步里的 `scp` 命令。
 
+</details>
+
 ## 【实验性功能】三指划词翻译 (reMarkable Paper Pro)
 
 跟上面 reMarkable 2 章节是同一个功能（圈/画线/框选内容，三指点一下，弹窗出翻译），
@@ -367,6 +392,14 @@ systemctl is-active xochitl goMarkableStream rm-agent translate-daemon xovi-star
   "截图"，直到手动重启，这会让翻译功能悄悄失效（每一轮都显示"没有检测到新内容"）。
   这个文件夹里的 `goMarkableStream.service` 已经做了规避（专门等 `dev-dri-card0.device`
   这个 unit 就绪，再加一个小延迟）——如果你自己拼装 unit 文件而不是用这份，记得保留这个顺序。
+
+**推荐做法：让 AI 编程助手帮你装**——跟 rM2 章节同一份
+[`.claude/skills/install-rm-agent/SKILL.md`](.claude/skills/install-rm-agent/SKILL.md)，
+Paper Pro 这条路径（aarch64 构建、`/lib/systemd/system`、上面这个 DRM 抢跑坑）
+它也一并处理了。想自己动手的话，手动步骤在下面。
+
+<details>
+<summary><b>手动安装 — Paper Pro 三指划词翻译</b></summary>
 
 ### 这个文件夹里有什么
 
@@ -505,3 +538,5 @@ systemctl is-active xochitl goMarkableStream rm-agent translate-daemon xovi-star
   重启都复现，确认你用的是这个文件夹里的 `goMarkableStream.service`（不是没有
   `dev-dri-card0.device` 排序的普通版本）。
 - **弹窗里中文显示成方块**：重新执行一遍第 3 步里字体的 `scp` 命令。
+
+</details>

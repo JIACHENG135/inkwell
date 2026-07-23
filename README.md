@@ -59,19 +59,43 @@ latest release for your device from the [Releases](../../releases) page:
 | reMarkable 2 | `rm-agent-*-armv7-unknown-linux-musleabihf` | `rm-agent.service`, `rm-agent.env.example` |
 | reMarkable Paper Pro | `rm-agent-*-aarch64-unknown-linux-musl` | `rm-agent-paperpro.service`, `goMarkableStream.service`, `rm-agent.env.example` |
 
-## Installation — reMarkable 2
+## Installation
+
+**Recommended: install with an AI coding agent.** Clone this repo, open
+it in [Claude Code](https://claude.com/product/claude-code) (or any
+agent that can read a `SKILL.md` and drive SSH commands), and ask it to
+install rm-agent. It reads
+[`.claude/skills/install-rm-agent/SKILL.md`](.claude/skills/install-rm-agent/SKILL.md),
+asks you for your device type, IP address, and Gemini API key, then runs
+every step below for you — including the extra safety checks the
+experimental translate feature needs before it lets anything persist.
+This is the same procedure as the manual steps further down, just
+driven for you instead of copy-pasted by hand.
+
+Prefer doing it yourself, or don't have an agent handy? The manual steps
+are below, unchanged.
+
+Either way, first:
+
+- Get a [Gemini API key](https://aistudio.google.com/apikey) with access to
+  an image-generation-capable model.
+- **reMarkable 2**: enable SSH — **Settings → About → Copyrights and
+  licenses** shows the device's root password; note its IP address from
+  **Settings → About → General** (or check your router).
+- **reMarkable Paper Pro**: enable Developer Mode (**Settings → General →
+  Paper Tablet → Software → Advanced → Developer Mode** — this resets the
+  device and re-runs onboarding), get the root password from **Settings →
+  General → Help → About → Copyrights and licenses** (GPLv3 Compliance
+  section). SSH is USB-only by default — connect via USB, SSH to
+  `10.11.99.1` with that password, then run `rm-ssh-over-wlan on` to
+  enable SSH over WiFi.
+
+<details>
+<summary><b>Manual install — reMarkable 2</b></summary>
 
 The binary is compiled for the reMarkable 2 itself (ARM, musl libc) — it
 does **not** run on your Mac or PC directly. Download it there, then copy it
 onto the tablet over SSH and set it up as a background service.
-
-Before you start:
-
-- Enable SSH on the reMarkable: **Settings → About → Copyrights and
-  licenses** shows the device's root password. Also note its IP address
-  from **Settings → About → General** (or check your router).
-- Get a [Gemini API key](https://aistudio.google.com/apikey) with access to
-  an image-generation-capable model.
 
 ### On macOS
 
@@ -125,7 +149,10 @@ ssh remarkable 'journalctl -u rm-agent -f'
 Then tap the bottom-left corner of the screen with the pen to ask a
 question.
 
-## Installation — reMarkable Paper Pro
+</details>
+
+<details>
+<summary><b>Manual install — reMarkable Paper Pro</b></summary>
 
 Paper Pro support needs a couple of things the reMarkable 2 doesn't:
 
@@ -139,19 +166,6 @@ Paper Pro support needs a couple of things the reMarkable 2 doesn't:
   to go in `/lib/systemd/system` instead (alongside xochitl's own), which
   means briefly remounting the normally-read-only root filesystem
   read-write to install them.
-
-Before you start:
-
-- Enable Developer Mode: **Settings → General → Paper Tablet → Software →
-  Advanced → Developer Mode** (this resets the device and re-runs the
-  onboarding steps).
-- Get the root password: **Settings → General → Help → About → Copyrights
-  and licenses**, scroll to the GPLv3 Compliance section.
-- SSH is USB-only by default. Connect via USB, then SSH to `10.11.99.1`
-  with the password above. Once in, run `rm-ssh-over-wlan on` to enable SSH
-  over WiFi too (convenient for everything after this).
-- Get a [Gemini API key](https://aistudio.google.com/apikey) with access to
-  an image-generation-capable model.
 
 ### 1. Install goMarkableStream
 
@@ -203,6 +217,8 @@ then re-run the status check above.
 
 Then tap the corner icon on the page with the pen to ask a question.
 
+</details>
+
 ## Experimental: Three-Finger Translate (reMarkable 2)
 
 Circle a word, underline a sentence, or box a whole paragraph, then
@@ -245,6 +261,17 @@ reMarkable supports or ships. That means real, specific risks:
 
 If any of that sounds like more risk than you want on your tablet,
 skip this section — the core rm-agent feature above doesn't need any of it.
+
+**Recommended: install with an AI coding agent.** The same
+[`.claude/skills/install-rm-agent/SKILL.md`](.claude/skills/install-rm-agent/SKILL.md)
+from the base install handles this too — it will explicitly walk you
+through the risks above and ask for confirmation before touching XOVI,
+then run the `xovi/debug` safety check itself before letting anything
+persist. The manual steps below are unchanged if you'd rather do it
+yourself.
+
+<details>
+<summary><b>Manual install — reMarkable 2 translate</b></summary>
 
 ### What's in this folder
 
@@ -386,6 +413,8 @@ the **×** to dismiss it early.
 - **Screenshots fail with a 500 error**: `ssh root@<device-ip> 'systemctl restart goMarkableStream'` — it needs restarting if it ever grabs xochitl's process id before XOVI finishes patching it.
 - **Popup shows Chinese as blank boxes**: the fonts didn't make it to `/home/root/xovi/exthome/translate/` — re-run the `scp` in step 3.
 
+</details>
+
 ## Experimental: Three-Finger Translate (reMarkable Paper Pro)
 
 Same feature as the reMarkable 2 section above (circle/underline/box
@@ -414,6 +443,15 @@ Paper Pro-specific gotcha on top of those:
   `gomarkablestream-RMPRO-lite` build (not the plain `RMPRO` one) —
   that's what's confirmed working, so if you're installing
   goMarkableStream fresh for this, grab that asset.
+
+**Recommended: install with an AI coding agent** — same
+[`.claude/skills/install-rm-agent/SKILL.md`](.claude/skills/install-rm-agent/SKILL.md)
+as the rM2 section, it handles the Paper Pro path (aarch64 build,
+`/lib/systemd/system`, the DRM-race gotcha above) too. Manual steps
+below if you'd rather do it yourself.
+
+<details>
+<summary><b>Manual install — Paper Pro translate</b></summary>
 
 ### What's in this folder
 
@@ -553,3 +591,5 @@ Same as the reMarkable 2 section: mark first (circle/underline/box),
 - **Tablet stuck "restarting" / xochitl won't stay up**: `ssh root@<device-ip> '/home/root/xovi/stock'`.
 - **Translation always says "no new content" / popup never shows real text**: check for a black/garbled screenshot — `ssh root@<device-ip> 'systemctl restart goMarkableStream'` and try again. If it keeps happening after every boot, confirm you're using the `goMarkableStream.service` from this folder (not a plain one without the `dev-dri-card0.device` ordering).
 - **Popup shows Chinese as blank boxes**: re-run the font `scp` in step 3.
+
+</details>
