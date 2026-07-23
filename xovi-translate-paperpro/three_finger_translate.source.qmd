@@ -365,6 +365,273 @@ IMPORT net.asivery.CommandExecutor 1.0
                 translatePopup.visible = false;
             }
         }
+
+        // --- Vocab review (Anki-style flashcards) ---
+        // Triggered externally by rm-agent's bottom-right corner tap
+        // (see docmeta.rs + main.rs), not by any gesture in this file —
+        // vocabPoller runs continuously in the background watching for
+        // vocab_daemon to start a session, independent of the translate
+        // gesture above.
+
+        CommandExecutor {
+            id: vocabGoodCmd
+        }
+        CommandExecutor {
+            id: vocabAgainCmd
+        }
+
+        Rectangle {
+            id: vocabPopup
+            visible: false
+            z: 1001
+            radius: 20
+            color: "white"
+            border.color: "#c0c0c0"
+            border.width: 1.5
+            property string cardState: "front"
+            property string word: ""
+            property string translationText: ""
+            property string exampleText: ""
+            property string exampleTranslationText: ""
+            property string message: ""
+            width: Math.min(touchArea.width * 0.6, 640)
+            height: vocabColumn.implicitHeight + 48
+
+            MouseArea {
+                anchors.fill: parent
+                drag.target: vocabPopup
+                drag.axis: Drag.XAndYAxis
+                drag.minimumX: 0
+                drag.maximumX: touchArea.width - vocabPopup.width
+                drag.minimumY: 0
+                drag.maximumY: touchArea.height - vocabPopup.height
+                onClicked: {
+                    if (vocabPopup.cardState === "front") {
+                        vocabPopup.cardState = "back";
+                    }
+                }
+            }
+
+            Column {
+                id: vocabColumn
+                x: 28
+                y: 24
+                width: parent.width - 56
+                spacing: 14
+
+                Item {
+                    width: parent.width
+                    height: Math.max(vocabHeaderLabel.implicitHeight, vocabCloseBtn.implicitHeight)
+
+                    Text {
+                        id: vocabHeaderLabel
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "复习"
+                        font.family: translateBoldFontLoader.name
+                        font.pixelSize: 22
+                        color: "#222222"
+                    }
+
+                    Text {
+                        id: vocabCloseBtn
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "×"
+                        font.family: translateBoldFontLoader.name
+                        font.pixelSize: 32
+                        color: "#222222"
+
+                        MouseArea {
+                            anchors.fill: parent
+                            anchors.margins: -12
+                            onClicked: vocabPopup.visible = false
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: parent.width
+                    height: 1
+                    color: "#e2e2e2"
+                }
+
+                Text {
+                    width: parent.width
+                    visible: vocabPopup.cardState !== "message"
+                    text: vocabPopup.word
+                    font.family: translateBoldFontLoader.name
+                    font.pixelSize: 44
+                    color: "black"
+                    wrapMode: Text.WordWrap
+                }
+
+                Text {
+                    width: parent.width
+                    visible: vocabPopup.cardState === "front"
+                    text: "点击卡片查看背面"
+                    font.family: translateBoldFontLoader.name
+                    font.pixelSize: 20
+                    color: "#8a8a8a"
+                }
+
+                Text {
+                    width: parent.width
+                    visible: vocabPopup.cardState === "back"
+                    text: vocabPopup.translationText
+                    font.family: translateBoldFontLoader.name
+                    font.pixelSize: 32
+                    color: "#222222"
+                    wrapMode: Text.WordWrap
+                }
+
+                Text {
+                    width: parent.width
+                    visible: vocabPopup.cardState === "back" && vocabPopup.exampleText.length > 0
+                    text: vocabPopup.exampleText
+                    textFormat: Text.RichText
+                    font.family: translateBoldFontLoader.name
+                    font.pixelSize: 22
+                    color: "#333333"
+                    wrapMode: Text.WordWrap
+                }
+
+                Text {
+                    width: parent.width
+                    visible: vocabPopup.cardState === "back" && vocabPopup.exampleTranslationText.length > 0
+                    text: vocabPopup.exampleTranslationText
+                    textFormat: Text.RichText
+                    font.family: translateBoldFontLoader.name
+                    font.pixelSize: 20
+                    color: "#555555"
+                    wrapMode: Text.WordWrap
+                }
+
+                Text {
+                    width: parent.width
+                    visible: vocabPopup.cardState === "message"
+                    text: vocabPopup.message
+                    font.family: translateBoldFontLoader.name
+                    font.pixelSize: 26
+                    color: "#222222"
+                    wrapMode: Text.WordWrap
+                }
+
+                Row {
+                    visible: vocabPopup.cardState === "back"
+                    spacing: 16
+                    width: parent.width
+
+                    Rectangle {
+                        width: (parent.width - 16) / 2
+                        height: 56
+                        radius: 12
+                        color: "#f5f5f5"
+                        border.color: "#c0c0c0"
+                        border.width: 1.5
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "不认识"
+                            font.family: translateBoldFontLoader.name
+                            font.pixelSize: 24
+                            color: "#222222"
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                vocabAgainCmd.executeCommand("/bin/touch", ["/home/root/vocab/review_action_again"]);
+                                vocabPopup.cardState = "front";
+                                vocabPopup.word = "…";
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        width: (parent.width - 16) / 2
+                        height: 56
+                        radius: 12
+                        color: "#222222"
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "认识"
+                            font.family: translateBoldFontLoader.name
+                            font.pixelSize: 24
+                            color: "white"
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                vocabGoodCmd.executeCommand("/bin/touch", ["/home/root/vocab/review_action_good"]);
+                                vocabPopup.cardState = "front";
+                                vocabPopup.word = "…";
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Timer {
+            id: vocabPoller
+            interval: 400
+            running: true
+            repeat: true
+            property int lastSeenSeq: 0
+            onTriggered: {
+                var xhr = new XMLHttpRequest();
+                var raw = "";
+                try {
+                    xhr.open("GET", "file:///home/root/vocab/review_result", false);
+                    xhr.send();
+                    raw = xhr.responseText || "";
+                } catch (e) {
+                    return;
+                }
+                var lines = raw.split("\n");
+                var seq = parseInt(lines[0]);
+                if (isNaN(seq) || seq <= lastSeenSeq) {
+                    return;
+                }
+                lastSeenSeq = seq;
+
+                var status = lines.length > 1 ? lines[1] : "";
+                if (status === "card") {
+                    vocabPopup.word = lines.length > 2 ? lines[2] : "";
+                    vocabPopup.translationText = lines.length > 3 ? lines[3] : "";
+                    vocabPopup.exampleText = lines.length > 4 ? lines[4] : "";
+                    vocabPopup.exampleTranslationText = lines.length > 5 ? lines.slice(5).join("\n") : "";
+                    vocabPopup.cardState = "front";
+                    vocabPopup.x = (touchArea.width - vocabPopup.width) / 2;
+                    vocabPopup.y = touchArea.height * 0.3;
+                    vocabPopup.visible = true;
+                } else if (status === "empty") {
+                    vocabPopup.cardState = "message";
+                    vocabPopup.message = "这本书暂时没有需要复习的单词";
+                    vocabPopup.x = (touchArea.width - vocabPopup.width) / 2;
+                    vocabPopup.y = touchArea.height * 0.3;
+                    vocabPopup.visible = true;
+                    vocabAutoCloseTimer.start();
+                } else if (status === "done") {
+                    vocabPopup.cardState = "message";
+                    vocabPopup.message = "今天的复习完成了！";
+                    vocabPopup.x = (touchArea.width - vocabPopup.width) / 2;
+                    vocabPopup.y = touchArea.height * 0.3;
+                    vocabPopup.visible = true;
+                    vocabAutoCloseTimer.start();
+                }
+            }
+        }
+
+        Timer {
+            id: vocabAutoCloseTimer
+            interval: 4000
+            repeat: false
+            onTriggered: vocabPopup.visible = false
+        }
     }
     END TRAVERSE
 END AFFECT
