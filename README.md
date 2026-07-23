@@ -250,7 +250,7 @@ skip this section — the core rm-agent feature above doesn't need any of it.
 
 | File | Purpose |
 | --- | --- |
-| `translate-daemon-v0.1.0-armv7-unknown-linux-musleabihf` | The companion background service — captures screenshots, diffs them to isolate what you marked, and calls Gemini to translate it. Reuses the same screenshot API as rm-agent itself. |
+| `translate-daemon-v0.2.0-armv7-unknown-linux-musleabihf` | The companion background service — tracks your pen in real time to find where you last marked, drops a small dot there on a fresh screenshot, and calls Gemini to translate it. Reuses the same screenshot API as rm-agent itself. |
 | `three_finger_translate.rm2-fw3.27.3.0.qmd` | The XOVI patch, pre-hashed for firmware 3.27.3.0 — adds the gesture and the popup UI to xochitl's document view. |
 | `three_finger_translate.source.qmd` | The same patch in plain, human-readable form (not hashed to any firmware) — start here if you're on a different firmware version. |
 | `NotoSansSC.ttf`, `NotoSansSC-Bold.ttf` | Chinese-capable fonts for the popup — the reMarkable 2's stock fonts are Latin-only and render Chinese as blank boxes otherwise. |
@@ -331,7 +331,7 @@ scp three_finger_translate.rm2-fw3.27.3.0.qmd \
     root@<device-ip>:/home/root/xovi/exthome/qt-resource-rebuilder/three_finger_translate.qmd
 scp NotoSansSC.ttf NotoSansSC-Bold.ttf root@<device-ip>:/home/root/xovi/exthome/translate/
 
-scp translate-daemon-v0.1.0-armv7-unknown-linux-musleabihf root@<device-ip>:/home/root/translate_daemon
+scp translate-daemon-v0.2.0-armv7-unknown-linux-musleabihf root@<device-ip>:/home/root/translate_daemon
 ssh root@<device-ip> 'chmod +x /home/root/translate_daemon'
 
 scp xovi-start.service translate-daemon.service goMarkableStream.service rm-agent.service \
@@ -421,7 +421,7 @@ Same idea as the reMarkable 2 folder, aarch64 build:
 
 | File | Purpose |
 | --- | --- |
-| `translate-daemon-v0.1.0-aarch64-unknown-linux-musl` | The companion background service (aarch64 build). |
+| `translate-daemon-v0.2.0-aarch64-unknown-linux-musl` | The companion background service (aarch64 build). |
 | `three_finger_translate.paperpro-fw3.27.3.0.qmd` | The XOVI patch, pre-hashed for Paper Pro's firmware 3.27.3.0 build specifically — **not interchangeable with the reMarkable 2 folder's pre-hashed file**, even though both report the same firmware version string, because the two devices' xochitl builds hash differently (confirmed: different total hash table entry counts). If your Paper Pro is on a different firmware, re-hash `three_finger_translate.source.qmd` yourself (same procedure as the rM2 section, just run `rebuild_hashtable` and `qmldiff` on this device instead). |
 | `three_finger_translate.source.qmd` | Same plain-text source as the rM2 folder (device-independent) — for re-hashing against a different firmware. |
 | `NotoSansSC.ttf`, `NotoSansSC-Bold.ttf` | Same fonts as the rM2 folder — architecture-independent. |
@@ -494,7 +494,7 @@ scp three_finger_translate.paperpro-fw3.27.3.0.qmd \
     root@<device-ip>:/home/root/xovi/exthome/qt-resource-rebuilder/three_finger_translate.qmd
 scp NotoSansSC.ttf NotoSansSC-Bold.ttf root@<device-ip>:/home/root/xovi/exthome/translate/
 
-scp translate-daemon-v0.1.0-aarch64-unknown-linux-musl root@<device-ip>:/home/root/translate_daemon
+scp translate-daemon-v0.2.0-aarch64-unknown-linux-musl root@<device-ip>:/home/root/translate_daemon
 ssh root@<device-ip> 'chmod +x /home/root/translate_daemon'
 ```
 

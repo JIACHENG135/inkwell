@@ -215,7 +215,7 @@ reMarkable 官方不支持也不提供这个框架。这意味着有一些实实
 
 | 文件 | 作用 |
 | --- | --- |
-| `translate-daemon-v0.1.0-armv7-unknown-linux-musleabihf` | 配套的后台服务——负责截图、对比截图找出你标记的内容，并调用 Gemini 翻译。复用了 rm-agent 本体同一套截图接口。 |
+| `translate-daemon-v0.2.0-armv7-unknown-linux-musleabihf` | 配套的后台服务——实时追踪笔迹，定位到你最后标记的位置，在最新截图上点一个小红点，再调用 Gemini 翻译。复用了 rm-agent 本体同一套截图接口。 |
 | `three_finger_translate.rm2-fw3.27.3.0.qmd` | XOVI 补丁，已经针对固件 3.27.3.0 哈希好——给 xochitl 的文档视图加上手势识别和弹窗界面。 |
 | `three_finger_translate.source.qmd` | 同一份补丁的明文可读版本（未针对任何固件哈希）——如果你的固件版本不一样，从这份文件开始重新哈希。 |
 | `NotoSansSC.ttf`、`NotoSansSC-Bold.ttf` | 弹窗用的中文字体——reMarkable 2 自带字体只有拉丁字符，不装这两个字体中文会显示成方块。 |
@@ -297,7 +297,7 @@ scp three_finger_translate.rm2-fw3.27.3.0.qmd \
     root@<设备IP>:/home/root/xovi/exthome/qt-resource-rebuilder/three_finger_translate.qmd
 scp NotoSansSC.ttf NotoSansSC-Bold.ttf root@<设备IP>:/home/root/xovi/exthome/translate/
 
-scp translate-daemon-v0.1.0-armv7-unknown-linux-musleabihf root@<设备IP>:/home/root/translate_daemon
+scp translate-daemon-v0.2.0-armv7-unknown-linux-musleabihf root@<设备IP>:/home/root/translate_daemon
 ssh root@<设备IP> 'chmod +x /home/root/translate_daemon'
 
 scp xovi-start.service translate-daemon.service goMarkableStream.service rm-agent.service \
@@ -374,7 +374,7 @@ systemctl is-active xochitl goMarkableStream rm-agent translate-daemon xovi-star
 
 | 文件 | 作用 |
 | --- | --- |
-| `translate-daemon-v0.1.0-aarch64-unknown-linux-musl` | 配套后台服务（aarch64 版）。 |
+| `translate-daemon-v0.2.0-aarch64-unknown-linux-musl` | 配套后台服务（aarch64 版）。 |
 | `three_finger_translate.paperpro-fw3.27.3.0.qmd` | 针对 Paper Pro 固件 3.27.3.0 这个具体构建预先哈希好的 XOVI 补丁——**跟 reMarkable 2 文件夹里那份预哈希文件不能互换**，虽然两边报的固件版本号字符串一样，但两个设备的 xochitl 构建哈希结果不一样（验证过：哈希表总条目数都不同）。如果你的 Paper Pro 是其他固件版本，需要自己重新给 `three_finger_translate.source.qmd` 做哈希（步骤跟 rM2 章节一样，只是 `rebuild_hashtable` 和 `qmldiff` 要在这台设备上跑）。 |
 | `three_finger_translate.source.qmd` | 跟 rM2 文件夹里的是同一份明文源码（跟设备无关）——用来针对其他固件重新哈希。 |
 | `NotoSansSC.ttf`、`NotoSansSC-Bold.ttf` | 跟 rM2 文件夹一样的字体——跟架构无关。 |
@@ -445,7 +445,7 @@ scp three_finger_translate.paperpro-fw3.27.3.0.qmd \
     root@<设备IP>:/home/root/xovi/exthome/qt-resource-rebuilder/three_finger_translate.qmd
 scp NotoSansSC.ttf NotoSansSC-Bold.ttf root@<设备IP>:/home/root/xovi/exthome/translate/
 
-scp translate-daemon-v0.1.0-aarch64-unknown-linux-musl root@<设备IP>:/home/root/translate_daemon
+scp translate-daemon-v0.2.0-aarch64-unknown-linux-musl root@<设备IP>:/home/root/translate_daemon
 ssh root@<设备IP> 'chmod +x /home/root/translate_daemon'
 ```
 
