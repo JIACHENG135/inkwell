@@ -63,7 +63,7 @@ IMPORT net.asivery.CommandExecutor 1.0
             color: "white"
             border.color: "#c0c0c0"
             border.width: 1.5
-            width: state === "loading" ? 220 : Math.min(touchArea.width * (translatePopup.longMode ? 0.8 : 0.6), translatePopup.longMode ? 820 : 640)
+            width: state === "loading" ? 250 : Math.min(touchArea.width * (translatePopup.longMode ? 0.8 : 0.6), translatePopup.longMode ? 820 : 640)
             height: state === "loading" ? loadingRow.implicitHeight + 40 : popupColumn.implicitHeight + 48
 
             function readResultFile() {
@@ -105,36 +105,110 @@ IMPORT net.asivery.CommandExecutor 1.0
                 spacing: 12
 
                 Item {
-                    // An 8-ray sunburst that rotates in discrete 45°
-                    // steps — same spinning-icon concept as rm-agent's
-                    // own corner-tap "thinking" indicator (see
-                    // spinner.rs), reimplemented in plain QML instead of
-                    // inked pen strokes. Discrete steps rather than a
-                    // smooth rotation animation since e-ink can't
-                    // usefully render continuous motion anyway.
+                    // Same 12-ray sunburst shape/length distribution as
+                    // rm-agent's own corner-tap "thinking" indicator (see
+                    // evdev::sunburst_strokes / spinner.rs) — each ray's
+                    // length comes from a fixed pseudo-random hash of its
+                    // index, so the resting shape is organic rather than
+                    // a mechanical, evenly-spaced pinwheel. Unlike the
+                    // ink version, this animates a traveling *contraction
+                    // wave* instead of rotating the whole shape: rays
+                    // stay at fixed angles, and a wave center sweeps
+                    // clockwise, dipping whichever ray it currently
+                    // passes over and tapering back to full length a few
+                    // rays out on either side — plus a small independent
+                    // per-ray length wiggle (much smaller than the main
+                    // wave's dip, disabled on whichever ray the wave is
+                    // currently on top of) so the whole ring reads as
+                    // gently squirming rather than one clean wave against
+                    // otherwise-static rays. Ray thickness also varies
+                    // per-ray (a third, independently-seeded hash) so
+                    // rays don't read as uniform bars. Rendered via
+                    // Canvas rather than a Repeater of Rectangles since
+                    // per-ray varying width/length lines with round caps
+                    // are far simpler to draw imperatively than to
+                    // compose from QML primitives.
+                    //
+                    // Runs considerably faster than the old 45°/150ms
+                    // rotation (per explicit direction to ignore e-ink
+                    // refresh cost for now) — if ghosting turns out to be
+                    // a real problem on-device, the first thing to try is
+                    // raising SPIN_INTERVAL_MS below, not redesigning the
+                    // shape/motion again.
                     id: spinnerIcon
-                    width: 30
-                    height: 30
+                    width: 56
+                    height: 56
 
-                    Repeater {
-                        model: 8
-                        Rectangle {
-                            width: 3
-                            height: 13
-                            radius: 1.5
-                            color: "#222222"
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            anchors.bottom: parent.verticalCenter
-                            transformOrigin: Item.Bottom
-                            rotation: index * 45
+                    Canvas {
+                        id: spinnerCanvas
+                        anchors.fill: parent
+                        property real waveAngle: 0
+                        property real t: 0
+
+                        readonly property int numRays: 12
+                        readonly property real baseAngleOffset: -Math.PI / 2
+                        readonly property real dipStrength: 0.62
+                        readonly property real dipWidthRad: (2 * Math.PI / numRays) * 1.6
+                        readonly property real wiggleAmplitude: 0.12
+
+                        function baseLenFrac(i) {
+                            var seed = Math.sin(i * 12.9898) * 43758.5453;
+                            var frac = seed - Math.floor(seed);
+                            return 0.4 + 0.6 * frac;
                         }
-                    }
+                        function widthFrac(i) {
+                            var seed = Math.sin(i * 39.425 + 1.618) * 98765.4321;
+                            var frac = seed - Math.floor(seed);
+                            return 0.65 + 0.6 * frac;
+                        }
+                        function wiggleParams(i) {
+                            var seed = Math.sin(i * 78.233 + 4.71) * 12345.6789;
+                            var frac = seed - Math.floor(seed);
+                            return { freq: 0.5 + 1.1 * frac, phase: frac * 2 * Math.PI };
+                        }
+                        function angleDelta(a, b) {
+                            var d = (a - b) % (2 * Math.PI);
+                            if (d > Math.PI) d -= 2 * Math.PI;
+                            if (d < -Math.PI) d += 2 * Math.PI;
+                            return Math.abs(d);
+                        }
 
-                    Timer {
-                        interval: 150
-                        running: translatePopup.state === "loading" && translatePopup.visible
-                        repeat: true
-                        onTriggered: spinnerIcon.rotation = (spinnerIcon.rotation + 45) % 360
+                        onPaint: {
+                            var ctx = getContext("2d");
+                            var cx = width / 2, cy = height / 2;
+                            var radius = (width / 2) * 0.9;
+                            ctx.clearRect(0, 0, width, height);
+                            ctx.strokeStyle = "#222222";
+                            ctx.lineCap = "round";
+                            for (var i = 0; i < numRays; i++) {
+                                var theta = baseAngleOffset + (2 * Math.PI * i) / numRays;
+                                var d = angleDelta(theta, waveAngle);
+                                var influence = d < dipWidthRad ? 0.5 * (1 + Math.cos(Math.PI * d / dipWidthRad)) : 0;
+                                var wp = wiggleParams(i);
+                                var wiggle = wiggleAmplitude * Math.sin(t * wp.freq + wp.phase);
+                                var lenFrac = baseLenFrac(i) * (1 - dipStrength * influence) * (1 + wiggle * (1 - influence));
+                                var len = radius * Math.max(0.12, lenFrac);
+                                ctx.lineWidth = width * 0.055 * widthFrac(i);
+                                var tipX = cx + len * Math.cos(theta);
+                                var tipY = cy + len * Math.sin(theta);
+                                ctx.beginPath();
+                                ctx.moveTo(cx, cy);
+                                ctx.lineTo(tipX, tipY);
+                                ctx.stroke();
+                            }
+                        }
+
+                        Timer {
+                            id: spinTimer
+                            interval: 60
+                            running: translatePopup.state === "loading" && translatePopup.visible
+                            repeat: true
+                            onTriggered: {
+                                spinnerCanvas.waveAngle += (2 * Math.PI / spinnerCanvas.numRays) / 0.8;
+                                spinnerCanvas.t += 0.35;
+                                spinnerCanvas.requestPaint();
+                            }
+                        }
                     }
                 }
 
