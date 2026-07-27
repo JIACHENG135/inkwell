@@ -14,6 +14,8 @@ IMPORT net.asivery.CommandExecutor 1.0
                 translatePopup.exampleText = "";
                 translatePopup.exampleTranslationText = "";
                 translatePopup.lastSeq = translatePopup.readSeq();
+                translatePopup.mode = "translate";
+                translatePopup.loadingLabel = "翻译中…";
                 translatePopup.state = "loading";
                 translatePopup.x = (touchArea.width - translatePopup.width) / 2;
                 translatePopup.y = touchArea.height * 0.3;
@@ -48,6 +50,15 @@ IMPORT net.asivery.CommandExecutor 1.0
             visible: false
             state: "loading"
             property int lastSeq: 0
+            // Which flow currently owns the popup. The three-finger
+            // translate round and rm-agent's corner-tap round share this
+            // one popup (and so share one copy of the spinner animation
+            // rather than a second, drifting copy of it), but they end
+            // differently: translate swaps to the result card, thinking
+            // just disappears. Whoever raised it is the only one allowed
+            // to take it down.
+            property string mode: "translate"
+            property string loadingLabel: "翻译中…"
             property string originalText: ""
             property string translationText: ""
             property string exampleText: ""
@@ -74,6 +85,22 @@ IMPORT net.asivery.CommandExecutor 1.0
                     return xhr.responseText || "";
                 } catch (e) {
                     return "";
+                }
+            }
+
+            // rm-agent detects the corner tap natively, in a separate
+            // process that cannot call into QML, so it signals through a
+            // one-byte state file the same way the translate round
+            // signals results back — see rm_agent::thinking, which owns
+            // the other end of this path.
+            function readThinking() {
+                var xhr = new XMLHttpRequest();
+                try {
+                    xhr.open("GET", "file:///home/root/xovi/exthome/translate/thinking", false);
+                    xhr.send();
+                    return (xhr.responseText || "").indexOf("1") === 0;
+                } catch (e) {
+                    return false;
                 }
             }
 
@@ -216,7 +243,7 @@ IMPORT net.asivery.CommandExecutor 1.0
                     font.family: translateBoldFontLoader.name
                     font.pixelSize: 24
                     color: "#222222"
-                    text: "翻译中…"
+                    text: translatePopup.loadingLabel
                     // Row stacks its children on their top edges and has
                     // no vertical alignment of its own, so a ~30px label
                     // beside the 56px spinner sits visibly high. Anchors
@@ -292,7 +319,7 @@ IMPORT net.asivery.CommandExecutor 1.0
                 Text {
                     id: translationTextEl
                     width: parent.width
-                    text: translatePopup.state === "loading" ? "翻译中…" : translatePopup.translationText
+                    text: translatePopup.state === "loading" ? translatePopup.loadingLabel : translatePopup.translationText
                     font.family: translateBoldFontLoader.name
                     font.pixelSize: !translatePopup.longMode ? 48 : (translatePopup.translationText.length > 150 ? 26 : 32)
                     color: "black"
@@ -372,6 +399,71 @@ IMPORT net.asivery.CommandExecutor 1.0
             repeat: false
             onTriggered: {
                 translatePopup.visible = false;
+            }
+        }
+
+        // Corner-tap "thinking" indicator. Unlike the translate round,
+        // which QML starts itself from the gesture and then polls only
+        // until an answer lands, this one is started by a *native*
+        // process (rm-agent watches the corners on the touch device),
+        // so there is nothing to hook and this has to keep polling. Two
+        // reads a second of a one-byte local file is cheap, but it is
+        // the one thing here that runs while the device is otherwise
+        // idle — raise the interval before adding anything else to it.
+        Timer {
+            id: thinkingPollTimer
+            interval: 500
+            repeat: true
+            running: true
+            property bool shown: false
+            property int elapsedMs: 0
+            // Same gap from the left edge as from the bottom one.
+            readonly property int cornerMargin: 40
+            onTriggered: {
+                var on = translatePopup.readThinking();
+                if (on && !shown) {
+                    // A translate round already has the popup; let it
+                    // finish rather than yanking the card away.
+                    if (translatePopup.visible && translatePopup.mode === "translate") {
+                        return;
+                    }
+                    shown = true;
+                    elapsedMs = 0;
+                    translatePopup.mode = "thinking";
+                    translatePopup.loadingLabel = "思考中…";
+                    translatePopup.state = "loading";
+                    // Anchored to the bottom-left corner that was just
+                    // tapped, rather than floating mid-screen like the
+                    // translate card: the wait belongs to that corner
+                    // button, and the ink indicator this replaced
+                    // animated the corner icon itself. Equal left and
+                    // bottom margins so it reads as deliberately placed
+                    // instead of shoved into the corner. Only the
+                    // bottom-left corner reaches Gemini (bottom-right
+                    // starts a vocab review, which has its own UI), so
+                    // the corner is fixed rather than passed in.
+                    //
+                    // Assigned after `state` because the popup's height
+                    // is bound to it, and the bottom margin is measured
+                    // from the resolved height.
+                    translatePopup.x = thinkingPollTimer.cornerMargin;
+                    translatePopup.y = touchArea.height - translatePopup.height - thinkingPollTimer.cornerMargin;
+                    translatePopup.visible = true;
+                    return;
+                }
+                if (shown) {
+                    elapsedMs += interval;
+                    // The deadline is a backstop for rm-agent dying
+                    // between raising and clearing the flag; it clears
+                    // the file on startup too, so this only matters
+                    // until it is next restarted.
+                    if (!on || elapsedMs > 120000) {
+                        shown = false;
+                        if (translatePopup.mode === "thinking") {
+                            translatePopup.visible = false;
+                        }
+                    }
+                }
             }
         }
 

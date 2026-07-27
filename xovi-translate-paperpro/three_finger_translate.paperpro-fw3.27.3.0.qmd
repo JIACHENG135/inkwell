@@ -14,6 +14,8 @@ IMPORT net.asivery.CommandExecutor 1.0
                 translatePopup.exampleText = "";
                 translatePopup.exampleTranslationText = "";
                 translatePopup.lastSeq = translatePopup.readSeq();
+                translatePopup.~&6504074414&~ = "translate";
+                translatePopup.loadingLabel = "翻译中…";
                 translatePopup.~&214641748202&~ = "loading";
                 translatePopup.~&180993&~ = (~&254549375155946341&~.~&214646099849&~ - translatePopup.~&214646099849&~) / 2;
                 translatePopup.~&180994&~ = ~&254549375155946341&~.~&7082729686082&~ * 0.3;
@@ -48,6 +50,15 @@ IMPORT net.asivery.CommandExecutor 1.0
             ~&233748328658231&~: ~&214625660372&~
             ~&214641748202&~: "loading"
             property ~&197088788&~ lastSeq: 0
+            /* Which flow currently owns the popup. The three-finger*/
+            /* translate round and rm-agent's corner-tap round share this*/
+            /* one popup (and so share one copy of the spinner animation*/
+            /* rather than a second, drifting copy of it), but they end*/
+            /* differently: translate swaps to the result card, thinking*/
+            /* just disappears. Whoever raised it is the only one allowed*/
+            /* to take it down.*/
+            property ~&7083178290016&~ ~&6504074414&~: "translate"
+            property ~&7083178290016&~ loadingLabel: "翻译中…"
             property ~&7083178290016&~ originalText: ""
             property ~&7083178290016&~ translationText: ""
             property ~&7083178290016&~ exampleText: ""
@@ -74,6 +85,22 @@ IMPORT net.asivery.CommandExecutor 1.0
                     ~&7083121450889&~ xhr.responseText || "";
                 } catch (~&180974&~) {
                     ~&7083121450889&~ "";
+                }
+            }
+
+            /* rm-agent detects the corner tap natively, in a separate*/
+            /* process that cannot call into QML, so it signals through a*/
+            /* one-byte state file the same way the translate round*/
+            /* signals results back — see rm_agent::thinking, which owns*/
+            /* the other end of this path.*/
+            function readThinking() {
+                ~&197102514&~ xhr =  new  XMLHttpRequest();
+                try {
+                    xhr.~&6504147419&~("GET", "file:///home/root/xovi/exthome/translate/thinking", ~&214625660372&~);
+                    xhr.~&6504279475&~();
+                    ~&7083121450889&~ (xhr.responseText || "").~&233731717342038&~(~&"180922&~) === 0;
+                } catch (~&180974&~) {
+                    ~&7083121450889&~ ~&214625660372&~;
                 }
             }
 
@@ -216,7 +243,7 @@ IMPORT net.asivery.CommandExecutor 1.0
                     ~&6503823200&~.~&7082646817675&~: translateBoldFontLoader.~&6504095402&~
                     ~&6503823200&~.~&254543497768871654&~: 24
                     ~&214622605608&~: "#222222"
-                    ~&6504315758&~: "翻译中…"
+                    ~&6504315758&~: translatePopup.loadingLabel
                     /* Row stacks its children on their top edges and has*/
                     /* no vertical alignment of its own, so a ~30px label*/
                     /* beside the 56px spinner sits visibly high. Anchors*/
@@ -292,7 +319,7 @@ IMPORT net.asivery.CommandExecutor 1.0
                 ~&6503165774&~ {
                     ~&5972374&~: translationTextEl
                     ~&214646099849&~: ~&7083038346995&~.~&214646099849&~
-                    ~&6504315758&~: translatePopup.~&214641748202&~ === "loading" ? "翻译中…" : translatePopup.translationText
+                    ~&6504315758&~: translatePopup.~&214641748202&~ === "loading" ? translatePopup.loadingLabel : translatePopup.translationText
                     ~&6503823200&~.~&7082646817675&~: translateBoldFontLoader.~&6504095402&~
                     ~&6503823200&~.~&254543497768871654&~: !translatePopup.~&7713276211299518&~ ? 48 : (translatePopup.translationText.~&7082886407723&~ > 150 ? 26 : 32)
                     ~&214622605608&~: ~&"214621299494&~
@@ -372,6 +399,71 @@ IMPORT net.asivery.CommandExecutor 1.0
             ~&7083121289162&~: ~&214625660372&~
             ~&495358363329399331&~: {
                 translatePopup.~&233748328658231&~ = ~&214625660372&~;
+            }
+        }
+
+        /* Corner-tap "thinking" indicator. Unlike the translate round,*/
+        /* which QML starts itself from the gesture and then polls only*/
+        /* until an answer lands, this one is started by a *native**/
+        /* process (rm-agent watches the corners on the touch device),*/
+        /* so there is nothing to hook and this has to keep polling. Two*/
+        /* reads a second of a one-byte local file is cheap, but it is*/
+        /* the one thing here that runs while the device is otherwise*/
+        /* idle — raise the interval before adding anything else to it.*/
+        ~&214604601930&~ {
+            ~&5972374&~: thinkingPollTimer
+            ~&7713147298280334&~: 500
+            ~&7083121289162&~: ~&6504329801&~
+            ~&233743626668842&~: ~&6504329801&~
+            property ~&6503679477&~ ~&214641332312&~: ~&214625660372&~
+            property ~&197088788&~ ~&254528125865067367&~: 0
+            /* Same gap from the left edge as from the bottom one.*/
+            readonly property ~&197088788&~ cornerMargin: 40
+            ~&495358363329399331&~: {
+                ~&197102514&~ ~&5972582&~ = translatePopup.readThinking();
+                ~&5972376&~ (~&5972582&~ && !~&214641332312&~) {
+                    /* A translate round already has the popup; let it*/
+                    /* finish rather than yanking the card away.*/
+                    ~&5972376&~ (translatePopup.~&233748328658231&~ && translatePopup.~&6504074414&~ === "translate") {
+                        ~&7083121450889&~;
+                    }
+                    ~&214641332312&~ = ~&6504329801&~;
+                    ~&254528125865067367&~ = 0;
+                    translatePopup.~&6504074414&~ = "thinking";
+                    translatePopup.loadingLabel = "思考中…";
+                    translatePopup.~&214641748202&~ = "loading";
+                    /* Anchored to the bottom-left corner that was just*/
+                    /* tapped, rather than floating mid-screen like the*/
+                    /* translate card: the wait belongs to that corner*/
+                    /* button, and the ink indicator this replaced*/
+                    /* animated the corner icon itself. Equal left and*/
+                    /* bottom margins so it reads as deliberately placed*/
+                    /* instead of shoved into the corner. Only the*/
+                    /* bottom-left corner reaches Gemini (bottom-right*/
+                    /* starts a vocab review, which has its own UI), so*/
+                    /* the corner is fixed rather than passed in.*/
+                    /**/
+                    /* Assigned after `state` because the popup's height*/
+                    /* is bound to it, and the bottom margin is measured*/
+                    /* from the resolved height.*/
+                    translatePopup.~&180993&~ = thinkingPollTimer.cornerMargin;
+                    translatePopup.~&180994&~ = ~&254549375155946341&~.~&7082729686082&~ - translatePopup.~&7082729686082&~ - thinkingPollTimer.cornerMargin;
+                    translatePopup.~&233748328658231&~ = ~&6504329801&~;
+                    ~&7083121450889&~;
+                }
+                ~&5972376&~ (~&214641332312&~) {
+                    ~&254528125865067367&~ += ~&7713147298280334&~;
+                    /* The deadline is a backstop for rm-agent dying*/
+                    /* between raising and clearing the flag; it clears*/
+                    /* the file on startup too, so this only matters*/
+                    /* until it is next restarted.*/
+                    ~&5972376&~ (!~&5972582&~ || ~&254528125865067367&~ > 120000) {
+                        ~&214641332312&~ = ~&214625660372&~;
+                        ~&5972376&~ (translatePopup.~&6504074414&~ === "thinking") {
+                            translatePopup.~&233748328658231&~ = ~&214625660372&~;
+                        }
+                    }
+                }
             }
         }
 
