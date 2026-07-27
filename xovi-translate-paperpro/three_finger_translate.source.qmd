@@ -27,8 +27,38 @@ IMPORT net.asivery.CommandExecutor 1.0
             }
         }
 
+        // Five fingers asks Gemini about the page. Three is translate;
+        // four is already taken by rm-weread's shelf browser, so five is
+        // the next one free.
+        TouchAreaClickFilter {
+            id: askGestureFilter
+            palmAreaThreshold: touchArea.tapPalmThreshold
+            enabled: !touchArea.panAndZoomOnly
+            fingers: 5
+            onClick: {
+                translatePopup.mode = "ask";
+                translatePopup.loadingLabel = "思考中…";
+                translatePopup.questionText = "";
+                translatePopup.answerChunks = [];
+                translatePopup.answerShownCount = 0;
+                translatePopup.askLastSeq = translatePopup.readAskSeq();
+                translatePopup.state = "loading";
+                translatePopup.x = (touchArea.width - translatePopup.width) / 2;
+                translatePopup.y = touchArea.height * 0.25;
+                translatePopup.visible = true;
+                askTriggerCmd.executeCommand("/bin/touch", ["/home/root/xovi/exthome/ask/trigger"]);
+                console.log("ask: gesture fired, trigger touched");
+                askPollTimer.elapsedMs = 0;
+                askPollTimer.start();
+            }
+        }
+
         CommandExecutor {
             id: translateTriggerCmd
+        }
+
+        CommandExecutor {
+            id: askTriggerCmd
         }
 
         FontLoader {
@@ -59,6 +89,17 @@ IMPORT net.asivery.CommandExecutor 1.0
             // to take it down.
             property string mode: "translate"
             property string loadingLabel: "翻译中…"
+            // The answer arrives complete and is revealed a chunk at a
+            // time, rather than streamed from the model. On this display
+            // the difference is invisible — and revealing a *complete*
+            // string means a chunk boundary can never land inside a
+            // <b>…</b> tag and hand the rich-text parser a broken
+            // fragment, which a token stream would do constantly.
+            property int askLastSeq: 0
+            property string questionText: ""
+            property var answerChunks: []
+            property int answerShownCount: 0
+            readonly property string answerShown: answerChunks.slice(0, answerShownCount).join("")
             property string originalText: ""
             property string translationText: ""
             property string exampleText: ""
@@ -70,12 +111,18 @@ IMPORT net.asivery.CommandExecutor 1.0
             // layout instead of a huge bolded word.
             property bool longMode: state === "done" && exampleText.length === 0 && translationText.length > 12
             z: 1000
-            radius: 20
+            radius: state === "answer" ? 26 : 20
             color: "white"
-            border.color: "#c0c0c0"
+            border.color: state === "answer" ? "#cfcfcf" : "#c0c0c0"
             border.width: 1.5
-            width: state === "loading" ? 250 : Math.min(touchArea.width * (translatePopup.longMode ? 0.8 : 0.6), translatePopup.longMode ? 820 : 640)
-            height: state === "loading" ? loadingRow.implicitHeight + 40 : popupColumn.implicitHeight + 48
+            width: state === "loading" ? 250
+                 : state === "answer" ? Math.min(touchArea.width * 0.82, 900)
+                 : Math.min(touchArea.width * (translatePopup.longMode ? 0.8 : 0.6), translatePopup.longMode ? 820 : 640)
+            // An answer is capped and scrolls rather than growing to fit:
+            // a long one would otherwise cover the page it is about.
+            height: state === "loading" ? loadingRow.implicitHeight + 40
+                  : state === "answer" ? Math.min(askColumn.implicitHeight + askHeader.height + 48, touchArea.height * 0.62)
+                  : popupColumn.implicitHeight + 48
 
             function readResultFile() {
                 var xhr = new XMLHttpRequest();
@@ -104,6 +151,62 @@ IMPORT net.asivery.CommandExecutor 1.0
                 }
             }
 
+            function readAskFile() {
+                var xhr = new XMLHttpRequest();
+                try {
+                    xhr.open("GET", "file:///home/root/xovi/exthome/ask/result.txt", false);
+                    xhr.send();
+                    return xhr.responseText || "";
+                } catch (e) {
+                    return "";
+                }
+            }
+
+            function readAskSeq() {
+                var n = parseInt(readAskFile().split("\n")[0]);
+                return isNaN(n) ? 0 : n;
+            }
+
+            // Splits an answer into the units the reveal animation steps
+            // through. Markup is swallowed whole into the chunk it opens
+            // so a tag is never split; Latin text breaks on spaces, and
+            // CJK — which has none — breaks every few characters, since
+            // per-character reveal would mean one partial e-ink refresh
+            // per character and this panel ghosts under that.
+            function chunkify(s) {
+                var out = [], buf = "", visible = 0, i = 0;
+                while (i < s.length) {
+                    var c = s.charAt(i);
+                    if (c === "<") {
+                        var j = s.indexOf(">", i);
+                        if (j < 0) { buf += s.substring(i); break; }
+                        buf += s.substring(i, j + 1);
+                        i = j + 1;
+                        continue;
+                    }
+                    buf += c;
+                    visible += 1;
+                    i += 1;
+                    if (c === " " || visible >= 4) {
+                        out.push(buf); buf = ""; visible = 0;
+                    }
+                }
+                if (buf.length > 0) out.push(buf);
+                return out;
+            }
+
+            function showAnswer(question, body) {
+                questionText = question;
+                // Qt rich text collapses newlines the way HTML does, so
+                // paragraph breaks have to become real markup.
+                var html = body.replace(/\n[ \t]*\n/g, "<br><br>").replace(/\n/g, " ");
+                answerChunks = chunkify(html);
+                answerShownCount = 0;
+                state = "answer";
+                x = (touchArea.width - width) / 2;
+                askRevealTimer.start();
+            }
+
             function readSeq() {
                 var raw = readResultFile();
                 var n = parseInt(raw.split("\n")[0]);
@@ -112,6 +215,7 @@ IMPORT net.asivery.CommandExecutor 1.0
 
             MouseArea {
                 anchors.fill: parent
+                enabled: translatePopup.state !== "answer"
                 drag.target: translatePopup
                 drag.axis: Drag.XAndYAxis
                 drag.minimumX: 0
@@ -122,6 +226,8 @@ IMPORT net.asivery.CommandExecutor 1.0
                     translatePopup.visible = false;
                     translatePollTimer.stop();
                     translateAutoCloseTimer.stop();
+                    askPollTimer.stop();
+                    askRevealTimer.stop();
                 }
             }
 
@@ -256,9 +362,183 @@ IMPORT net.asivery.CommandExecutor 1.0
                 }
             }
 
+            // --- Answer card ---
+            //
+            // Styled after a macOS sheet: a titlebar you drag the window
+            // by, a close control at its left, a hairline rule, and a
+            // roomy body. Two things macOS leans on are deliberately
+            // absent. Translucency/vibrancy cannot exist on a reflective
+            // panel with no backlight, and a soft drop shadow needs
+            // QtQuick.Effects, which is not installed on this device —
+            // and would dither into grey mush on e-ink even if it were.
+            // The card is separated from the page by a crisp hairline
+            // and real whitespace instead, which is what reads here.
+            //
+            // Colour is used exactly once, on the close button. Paper
+            // Pro shows it red; rM2 is greyscale and renders it a mid
+            // grey, so the ✕ glyph is always drawn rather than appearing
+            // on hover the way macOS does — on the device where it stays
+            // grey, that glyph is the only thing marking it as a control.
+            Item {
+                id: askHeader
+                visible: translatePopup.state === "answer"
+                width: parent.width
+                height: 60
+
+                MouseArea {
+                    anchors.fill: parent
+                    drag.target: translatePopup
+                    drag.axis: Drag.XAndYAxis
+                    drag.minimumX: 0
+                    drag.maximumX: touchArea.width - translatePopup.width
+                    drag.minimumY: 0
+                    drag.maximumY: touchArea.height - translatePopup.height
+                }
+
+                Rectangle {
+                    id: askCloseBtn
+                    x: 22
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 30
+                    height: 30
+                    radius: width / 2
+                    color: "#ff5f57"
+                    border.color: "#d94b43"
+                    border.width: 1
+
+                    // Drawn, not typed. ✕ (U+2715) is not in Noto Sans
+                    // SC and rendered as a missing-glyph box on device;
+                    // two rotated bars need no font at all.
+                    Item {
+                        anchors.centerIn: parent
+                        width: 12
+                        height: 12
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: parent.width
+                            height: 2
+                            radius: 1
+                            color: "#5c1410"
+                            rotation: 45
+                        }
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: parent.width
+                            height: 2
+                            radius: 1
+                            color: "#5c1410"
+                            rotation: -45
+                        }
+                    }
+
+                    MouseArea {
+                        // Deliberately larger than the dot it sits on: a
+                        // 30px circle is a fine mouse target and a poor
+                        // fingertip one.
+                        anchors.centerIn: parent
+                        width: 72
+                        height: 72
+                        onClicked: {
+                            translatePopup.visible = false;
+                            askPollTimer.stop();
+                            askRevealTimer.stop();
+                        }
+                    }
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "回答"
+                    font.family: translateBoldFontLoader.name
+                    font.pixelSize: 21
+                    color: "#8a8a8a"
+                }
+
+                Rectangle {
+                    anchors.bottom: parent.bottom
+                    width: parent.width
+                    height: 1
+                    color: "#e2e2e2"
+                }
+            }
+
+            Flickable {
+                id: askFlick
+                visible: translatePopup.state === "answer"
+                x: 34
+                y: askHeader.height + 24
+                width: parent.width - 68
+                height: parent.height - askHeader.height - 48
+                contentHeight: askColumn.implicitHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                Column {
+                    id: askColumn
+                    width: askFlick.width
+                    spacing: 24
+
+                    // What the model decided it was being asked. Shown
+                    // because the interesting failure of this feature is
+                    // not a wrong answer, it is a right answer to the
+                    // wrong question — with the question on screen that
+                    // is obvious at a glance instead of baffling.
+                    // Rendered as a quotation: an accent rule, a quiet
+                    // label, and smaller secondary-grey type, so it reads
+                    // as provenance rather than as part of the answer.
+                    Row {
+                        visible: translatePopup.questionText.length > 0
+                        spacing: 16
+
+                        Rectangle {
+                            width: 3
+                            height: questionColumn.implicitHeight
+                            radius: 1.5
+                            color: "#d2d2d7"
+                        }
+
+                        Column {
+                            id: questionColumn
+                            width: askColumn.width - 19
+                            spacing: 6
+
+                            Text {
+                                text: "问题"
+                                font.family: translateBoldFontLoader.name
+                                font.pixelSize: 16
+                                color: "#aeaeb2"
+                            }
+
+                            Text {
+                                width: parent.width
+                                text: translatePopup.questionText
+                                textFormat: Text.PlainText
+                                wrapMode: Text.WordWrap
+                                font.family: translateFontLoader.name
+                                font.pixelSize: 21
+                                lineHeight: 1.25
+                                color: "#6e6e73"
+                            }
+                        }
+                    }
+
+                    Text {
+                        id: askText
+                        width: askColumn.width
+                        text: translatePopup.answerShown
+                        textFormat: Text.RichText
+                        wrapMode: Text.WordWrap
+                        font.family: translateFontLoader.name
+                        font.pixelSize: 25
+                        lineHeight: 1.32
+                        color: "#1d1d1f"
+                    }
+                }
+            }
+
             Column {
                 id: popupColumn
-                visible: translatePopup.state !== "loading"
+                visible: translatePopup.state === "done"
                 x: 28
                 y: 24
                 width: parent.width - 56
@@ -402,6 +682,57 @@ IMPORT net.asivery.CommandExecutor 1.0
             }
         }
 
+        Timer {
+            id: askPollTimer
+            interval: 300
+            repeat: true
+            property int elapsedMs: 0
+            onTriggered: {
+                elapsedMs += interval;
+                var raw = translatePopup.readAskFile();
+                var nl = raw.indexOf("\n");
+                if (nl >= 0) {
+                    var seq = parseInt(raw.substring(0, nl));
+                    if (!isNaN(seq) && seq > translatePopup.askLastSeq) {
+                        stop();
+                        var rest = raw.substring(nl + 1);
+                        var nl2 = rest.indexOf("\n");
+                        var q = nl2 >= 0 ? rest.substring(0, nl2) : "";
+                        var body = nl2 >= 0 ? rest.substring(nl2 + 1) : rest;
+                        translatePopup.showAnswer(q.trim(), body);
+                        return;
+                    }
+                }
+                // Longer than the translate timeout: this asks a real
+                // question about a whole page, not a word lookup.
+                if (elapsedMs > 45000) {
+                    stop();
+                    translatePopup.showAnswer("", "(超时，请重试)");
+                }
+            }
+        }
+
+        // Reveals the answer a chunk at a time. The interval is a
+        // deliberate compromise: faster looks better on a backlit screen
+        // but every step is a partial refresh here, and this panel
+        // accumulates visible ghosting when the same region is refreshed
+        // rapidly (the ink spinner this project used to draw ran into
+        // exactly that).
+        Timer {
+            id: askRevealTimer
+            interval: 140
+            repeat: true
+            onTriggered: {
+                if (translatePopup.answerShownCount >= translatePopup.answerChunks.length) {
+                    stop();
+                    return;
+                }
+                translatePopup.answerShownCount += 1;
+                // Keep the newest line in view, the way a terminal does.
+                askFlick.contentY = Math.max(0, askFlick.contentHeight - askFlick.height);
+            }
+        }
+
         // Corner-tap "thinking" indicator. Unlike the translate round,
         // which QML starts itself from the gesture and then polls only
         // until an answer lands, this one is started by a *native*
@@ -424,7 +755,7 @@ IMPORT net.asivery.CommandExecutor 1.0
                 if (on && !shown) {
                     // A translate round already has the popup; let it
                     // finish rather than yanking the card away.
-                    if (translatePopup.visible && translatePopup.mode === "translate") {
+                    if (translatePopup.visible && translatePopup.mode !== "thinking") {
                         return;
                     }
                     shown = true;

@@ -27,8 +27,38 @@ IMPORT net.asivery.CommandExecutor 1.0
             }
         }
 
+        /* Five fingers asks Gemini about the page. Three is translate;*/
+        /* four is already taken by rm-weread's shelf browser, so five is*/
+        /* the next one free.*/
+        ~&8520322697674622449&~ {
+            ~&5972374&~: askGestureFilter
+            ~&2593665694115486297&~: ~&254549375155946341&~.~&8672331594786402181&~
+            ~&233726547792244&~: !~&254549375155946341&~.~&16735792760298061570&~
+            ~&233727659172727&~: 5
+            ~&233739427250348&~: {
+                translatePopup.~&6504074414&~ = "ask";
+                translatePopup.loadingLabel = "思考中…";
+                translatePopup.questionText = "";
+                translatePopup.answerChunks = [];
+                translatePopup.answerShownCount = 0;
+                translatePopup.askLastSeq = translatePopup.readAskSeq();
+                translatePopup.~&214641748202&~ = "loading";
+                translatePopup.~&180993&~ = (~&254549375155946341&~.~&214646099849&~ - translatePopup.~&214646099849&~) / 2;
+                translatePopup.~&180994&~ = ~&254549375155946341&~.~&7082729686082&~ * 0.25;
+                translatePopup.~&233748328658231&~ = ~&6504329801&~;
+                askTriggerCmd.executeCommand("/bin/touch", ["/home/root/xovi/exthome/ask/trigger"]);
+                ~&233724020023100&~.~&197092075&~("ask: gesture fired, trigger touched");
+                askPollTimer.~&254528125865067367&~ = 0;
+                askPollTimer.~&214641748151&~();
+            }
+        }
+
         CommandExecutor {
             ~&5972374&~: translateTriggerCmd
+        }
+
+        CommandExecutor {
+            ~&5972374&~: askTriggerCmd
         }
 
         FontLoader {
@@ -59,6 +89,17 @@ IMPORT net.asivery.CommandExecutor 1.0
             /* to take it down.*/
             property ~&7083178290016&~ ~&6504074414&~: "translate"
             property ~&7083178290016&~ loadingLabel: "翻译中…"
+            /* The answer arrives complete and is revealed a chunk at a*/
+            /* time, rather than streamed from the model. On this display*/
+            /* the difference is invisible — and revealing a *complete**/
+            /* string means a chunk boundary can never land inside a*/
+            /* <b>…</b> tag and hand the rich-text parser a broken*/
+            /* fragment, which a token stream would do constantly.*/
+            property ~&197088788&~ askLastSeq: 0
+            property ~&7083178290016&~ questionText: ""
+            property ~&197102514&~ answerChunks: []
+            property ~&197088788&~ answerShownCount: 0
+            readonly property ~&7083178290016&~ answerShown: answerChunks.~&214641468857&~(0, answerShownCount).join("")
             property ~&7083178290016&~ originalText: ""
             property ~&7083178290016&~ translationText: ""
             property ~&7083178290016&~ exampleText: ""
@@ -70,12 +111,18 @@ IMPORT net.asivery.CommandExecutor 1.0
             /* layout instead of a huge bolded word.*/
             property ~&6503679477&~ ~&7713276211299518&~: ~&214641748202&~ === ~&"6503751311&~ && exampleText.~&7082886407723&~ === 0 && translationText.~&7082886407723&~ > 12
             ~&180995&~: 1000
-            ~&7083116119249&~: 20
+            ~&7083116119249&~: ~&214641748202&~ === "answer" ? 26 : 20
             ~&214622605608&~: ~&"214646069354&~
-            ~&7082507052999&~.~&214622605608&~: "#c0c0c0"
+            ~&7082507052999&~.~&214622605608&~: ~&214641748202&~ === "answer" ? "#cfcfcf" : "#c0c0c0"
             ~&7082507052999&~.~&214646099849&~: 1.5
-            ~&214646099849&~: ~&214641748202&~ === "loading" ? 250 : ~&6502909715&~.~&197092973&~(~&254549375155946341&~.~&214646099849&~ * (translatePopup.~&7713276211299518&~ ? 0.8 : 0.6), translatePopup.~&7713276211299518&~ ? 820 : 640)
-            ~&7082729686082&~: ~&214641748202&~ === "loading" ? loadingRow.~&2122835675838176157&~ + 40 : popupColumn.~&2122835675838176157&~ + 48
+            ~&214646099849&~: ~&214641748202&~ === "loading" ? 250
+                 : ~&214641748202&~ === "answer" ? ~&6502909715&~.~&197092973&~(~&254549375155946341&~.~&214646099849&~ * 0.82, 900)
+                 : ~&6502909715&~.~&197092973&~(~&254549375155946341&~.~&214646099849&~ * (translatePopup.~&7713276211299518&~ ? 0.8 : 0.6), translatePopup.~&7713276211299518&~ ? 820 : 640)
+            /* An answer is capped and scrolls rather than growing to fit:*/
+            /* a long one would otherwise cover the page it is about.*/
+            ~&7082729686082&~: ~&214641748202&~ === "loading" ? loadingRow.~&2122835675838176157&~ + 40
+                  : ~&214641748202&~ === "answer" ? ~&6502909715&~.~&197092973&~(askColumn.~&2122835675838176157&~ + askHeader.~&7082729686082&~ + 48, ~&254549375155946341&~.~&7082729686082&~ * 0.62)
+                  : popupColumn.~&2122835675838176157&~ + 48
 
             function readResultFile() {
                 ~&197102514&~ xhr =  new  XMLHttpRequest();
@@ -104,6 +151,62 @@ IMPORT net.asivery.CommandExecutor 1.0
                 }
             }
 
+            function readAskFile() {
+                ~&197102514&~ xhr =  new  XMLHttpRequest();
+                try {
+                    xhr.~&6504147419&~("GET", "file:///home/root/xovi/exthome/ask/result.txt", ~&214625660372&~);
+                    xhr.~&6504279475&~();
+                    ~&7083121450889&~ xhr.responseText || "";
+                } catch (~&180974&~) {
+                    ~&7083121450889&~ "";
+                }
+            }
+
+            function readAskSeq() {
+                ~&197102514&~ n = ~&7713428776113935&~(readAskFile().~&214641616085&~("\n")[0]);
+                ~&7083121450889&~ ~&214629831714&~(n) ? 0 : n;
+            }
+
+            /* Splits an answer into the units the reveal animation steps*/
+            /* through. Markup is swallowed whole into the chunk it opens*/
+            /* so a tag is never split; Latin text breaks on spaces, and*/
+            /* CJK — which has none — breaks every few characters, since*/
+            /* per-character reveal would mean one partial e-ink refresh*/
+            /* per character and this panel ghosts under that.*/
+            function chunkify(~&180988&~) {
+                ~&197102514&~ out = [], buf = "", ~&233748328658231&~ = 0, ~&180978&~ = 0;
+                ~&214646069090&~ (~&180978&~ < ~&180988&~.~&7082886407723&~) {
+                    ~&197102514&~ ~&180972&~ = ~&180988&~.~&7082537290076&~(~&180978&~);
+                    ~&5972376&~ (~&180972&~ === "<") {
+                        ~&197102514&~ ~&180979&~ = ~&180988&~.~&233731717342038&~(">", ~&180978&~);
+                        ~&5972376&~ (~&180979&~ < 0) { buf += ~&180988&~.~&254548200562243306&~(~&180978&~); ~&214621519406&~; }
+                        buf += ~&180988&~.~&254548200562243306&~(~&180978&~, ~&180979&~ + 1);
+                        ~&180978&~ = ~&180979&~ + 1;
+                        ~&7712892661735406&~;
+                    }
+                    buf += ~&180972&~;
+                    ~&233748328658231&~ += 1;
+                    ~&180978&~ += 1;
+                    ~&5972376&~ (~&180972&~ === ~&"180905&~ || ~&233748328658231&~ >= 4) {
+                        out.~&6504189257&~(buf); buf = ""; ~&233748328658231&~ = 0;
+                    }
+                }
+                ~&5972376&~ (buf.~&7082886407723&~ > 0) out.~&6504189257&~(buf);
+                ~&7083121450889&~ out;
+            }
+
+            function showAnswer(question, ~&6503679127&~) {
+                questionText = question;
+                /* Qt rich text collapses newlines the way HTML does, so*/
+                /* paragraph breaks have to become real markup.*/
+                ~&197102514&~ ~&6503900478&~ = ~&6503679127&~.replace(/\n[ \~&180989&~]*\n/g, "<br><br>").replace(/\n/g, ~&"180905&~);
+                answerChunks = chunkify(~&6503900478&~);
+                answerShownCount = 0;
+                ~&214641748202&~ = "answer";
+                ~&180993&~ = (~&254549375155946341&~.~&214646099849&~ - ~&214646099849&~) / 2;
+                askRevealTimer.~&214641748151&~();
+            }
+
             function readSeq() {
                 ~&197102514&~ raw = readResultFile();
                 ~&197102514&~ n = ~&7713428776113935&~(raw.~&214641616085&~("\n")[0]);
@@ -112,6 +215,7 @@ IMPORT net.asivery.CommandExecutor 1.0
 
             ~&254494525842443467&~ {
                 ~&233721384511543&~.~&6503816592&~: ~&7083038346995&~
+                ~&233726547792244&~: translatePopup.~&214641748202&~ !== "answer"
                 ~&6503754151&~.~&7083194890448&~: translatePopup
                 ~&6503754151&~.axis: ~&6502604167&~.XAndYAxis
                 ~&6503754151&~.~&7713311084463325&~: 0
@@ -122,6 +226,8 @@ IMPORT net.asivery.CommandExecutor 1.0
                     translatePopup.~&233748328658231&~ = ~&214625660372&~;
                     translatePollTimer.~&6504295855&~();
                     translateAutoCloseTimer.~&6504295855&~();
+                    askPollTimer.~&6504295855&~();
+                    askRevealTimer.~&6504295855&~();
                 }
             }
 
@@ -256,9 +362,183 @@ IMPORT net.asivery.CommandExecutor 1.0
                 }
             }
 
+            /* --- Answer card ---*/
+            /**/
+            /* Styled after a macOS sheet: a titlebar you drag the window*/
+            /* by, a close control at its left, a hairline rule, and a*/
+            /* roomy body. Two things macOS leans on are deliberately*/
+            /* absent. Translucency/vibrancy cannot exist on a reflective*/
+            /* panel with no backlight, and a soft drop shadow needs*/
+            /* QtQuick.Effects, which is not installed on this device —*/
+            /* and would dither into grey mush on e-ink even if it were.*/
+            /* The card is separated from the page by a crisp hairline*/
+            /* and real whitespace instead, which is what reads here.*/
+            /**/
+            /* Colour is used exactly once, on the close button. Paper*/
+            /* Pro shows it red; rM2 is greyscale and renders it a mid*/
+            /* grey, so the ✕ glyph is always drawn rather than appearing*/
+            /* on hover the way macOS does — on the device where it stays*/
+            /* grey, that glyph is the only thing marking it as a control.*/
+            ~&6502786168&~ {
+                ~&5972374&~: askHeader
+                ~&233748328658231&~: translatePopup.~&214641748202&~ === "answer"
+                ~&214646099849&~: ~&7083038346995&~.~&214646099849&~
+                ~&7082729686082&~: 60
+
+                ~&254494525842443467&~ {
+                    ~&233721384511543&~.~&6503816592&~: ~&7083038346995&~
+                    ~&6503754151&~.~&7083194890448&~: translatePopup
+                    ~&6503754151&~.axis: ~&6502604167&~.XAndYAxis
+                    ~&6503754151&~.~&7713311084463325&~: 0
+                    ~&6503754151&~.~&7713301144073503&~: ~&254549375155946341&~.~&214646099849&~ - translatePopup.~&214646099849&~
+                    ~&6503754151&~.~&7713311084463326&~: 0
+                    ~&6503754151&~.~&7713301144073504&~: ~&254549375155946341&~.~&7082729686082&~ - translatePopup.~&7082729686082&~
+                }
+
+                ~&254501108490678590&~ {
+                    ~&5972374&~: askCloseBtn
+                    ~&180993&~: 22
+                    ~&233721384511543&~.~&3441383163516681764&~: ~&7083038346995&~.~&3441383163516681764&~
+                    ~&214646099849&~: 30
+                    ~&7082729686082&~: 30
+                    ~&7083116119249&~: ~&214646099849&~ / 2
+                    ~&214622605608&~: "#ff5f57"
+                    ~&7082507052999&~.~&214622605608&~: "#d94b43"
+                    ~&7082507052999&~.~&214646099849&~: 1
+
+                    /* Drawn, not typed. ✕ (U+2715) is not in Noto Sans*/
+                    /* SC and rendered as a missing-glyph box on device;*/
+                    /* two rotated bars need no font at all.*/
+                    ~&6502786168&~ {
+                        ~&233721384511543&~.~&7712879746914881&~: ~&7083038346995&~
+                        ~&214646099849&~: 12
+                        ~&7082729686082&~: 12
+                        ~&254501108490678590&~ {
+                            ~&233721384511543&~.~&7712879746914881&~: ~&7083038346995&~
+                            ~&214646099849&~: ~&7083038346995&~.~&214646099849&~
+                            ~&7082729686082&~: 2
+                            ~&7083116119249&~: 1
+                            ~&214622605608&~: "#5c1410"
+                            ~&7713532151049593&~: 45
+                        }
+                        ~&254501108490678590&~ {
+                            ~&233721384511543&~.~&7712879746914881&~: ~&7083038346995&~
+                            ~&214646099849&~: ~&7083038346995&~.~&214646099849&~
+                            ~&7082729686082&~: 2
+                            ~&7083116119249&~: 1
+                            ~&214622605608&~: "#5c1410"
+                            ~&7713532151049593&~: -45
+                        }
+                    }
+
+                    ~&254494525842443467&~ {
+                        /* Deliberately larger than the dot it sits on: a*/
+                        /* 30px circle is a fine mouse target and a poor*/
+                        /* fingertip one.*/
+                        ~&233721384511543&~.~&7712879746914881&~: ~&7083038346995&~
+                        ~&214646099849&~: 72
+                        ~&7082729686082&~: 72
+                        ~&254542236275632405&~: {
+                            translatePopup.~&233748328658231&~ = ~&214625660372&~;
+                            askPollTimer.~&6504295855&~();
+                            askRevealTimer.~&6504295855&~();
+                        }
+                    }
+                }
+
+                ~&6503165774&~ {
+                    ~&233721384511543&~.~&7712879746914881&~: ~&7083038346995&~
+                    ~&6504315758&~: "回答"
+                    ~&6503823200&~.~&7082646817675&~: translateBoldFontLoader.~&6504095402&~
+                    ~&6503823200&~.~&254543497768871654&~: 21
+                    ~&214622605608&~: "#8a8a8a"
+                }
+
+                ~&254501108490678590&~ {
+                    ~&233721384511543&~.~&7082507142622&~: ~&7083038346995&~.~&7082507142622&~
+                    ~&214646099849&~: ~&7083038346995&~.~&214646099849&~
+                    ~&7082729686082&~: 1
+                    ~&214622605608&~: "#e2e2e2"
+                }
+            }
+
+            ~&254484537011253254&~ {
+                ~&5972374&~: askFlick
+                ~&233748328658231&~: translatePopup.~&214641748202&~ === "answer"
+                ~&180993&~: 34
+                ~&180994&~: askHeader.~&7082729686082&~ + 24
+                ~&214646099849&~: ~&7083038346995&~.~&214646099849&~ - 68
+                ~&7082729686082&~: ~&7083038346995&~.~&7082729686082&~ - askHeader.~&7082729686082&~ - 48
+                ~&3012200093845531741&~: askColumn.~&2122835675838176157&~
+                ~&6503711953&~: ~&6504329801&~
+                ~&7813324754917011940&~: ~&254484537011253254&~.~&14942085089274361903&~
+
+                ~&7081293658967&~ {
+                    ~&5972374&~: askColumn
+                    ~&214646099849&~: askFlick.~&214646099849&~
+                    ~&233744706647566&~: 24
+
+                    /* What the model decided it was being asked. Shown*/
+                    /* because the interesting failure of this feature is*/
+                    /* not a wrong answer, it is a right answer to the*/
+                    /* wrong question — with the question on screen that*/
+                    /* is obvious at a glance instead of baffling.*/
+                    /* Rendered as a quotation: an accent rule, a quiet*/
+                    /* label, and smaller secondary-grey type, so it reads*/
+                    /* as provenance rather than as part of the answer.*/
+                    ~&197063777&~ {
+                        ~&233748328658231&~: translatePopup.questionText.~&7082886407723&~ > 0
+                        ~&233744706647566&~: 16
+
+                        ~&254501108490678590&~ {
+                            ~&214646099849&~: 3
+                            ~&7082729686082&~: questionColumn.~&2122835675838176157&~
+                            ~&7083116119249&~: 1.5
+                            ~&214622605608&~: "#d2d2d7"
+                        }
+
+                        ~&7081293658967&~ {
+                            ~&5972374&~: questionColumn
+                            ~&214646099849&~: askColumn.~&214646099849&~ - 19
+                            ~&233744706647566&~: 6
+
+                            ~&6503165774&~ {
+                                ~&6504315758&~: "问题"
+                                ~&6503823200&~.~&7082646817675&~: translateBoldFontLoader.~&6504095402&~
+                                ~&6503823200&~.~&254543497768871654&~: 16
+                                ~&214622605608&~: "#aeaeb2"
+                            }
+
+                            ~&6503165774&~ {
+                                ~&214646099849&~: ~&7083038346995&~.~&214646099849&~
+                                ~&6504315758&~: translatePopup.questionText
+                                ~&8400115464594289079&~: ~&6503165774&~.~&254498591003598530&~
+                                ~&7713748390489352&~: ~&6503165774&~.~&7712381377343359&~
+                                ~&6503823200&~.~&7082646817675&~: translateFontLoader.~&6504095402&~
+                                ~&6503823200&~.~&254543497768871654&~: 21
+                                ~&8399749352863178954&~: 1.25
+                                ~&214622605608&~: "#6e6e73"
+                            }
+                        }
+                    }
+
+                    ~&6503165774&~ {
+                        ~&5972374&~: askText
+                        ~&214646099849&~: askColumn.~&214646099849&~
+                        ~&6504315758&~: translatePopup.answerShown
+                        ~&8400115464594289079&~: ~&6503165774&~.~&7712159953912244&~
+                        ~&7713748390489352&~: ~&6503165774&~.~&7712381377343359&~
+                        ~&6503823200&~.~&7082646817675&~: translateFontLoader.~&6504095402&~
+                        ~&6503823200&~.~&254543497768871654&~: 25
+                        ~&8399749352863178954&~: 1.32
+                        ~&214622605608&~: "#1d1d1f"
+                    }
+                }
+            }
+
             ~&7081293658967&~ {
                 ~&5972374&~: popupColumn
-                ~&233748328658231&~: translatePopup.~&214641748202&~ !== "loading"
+                ~&233748328658231&~: translatePopup.~&214641748202&~ === ~&"6503751311&~
                 ~&180993&~: 28
                 ~&180994&~: 24
                 ~&214646099849&~: ~&7083038346995&~.~&214646099849&~ - 56
@@ -402,6 +682,57 @@ IMPORT net.asivery.CommandExecutor 1.0
             }
         }
 
+        ~&214604601930&~ {
+            ~&5972374&~: askPollTimer
+            ~&7713147298280334&~: 300
+            ~&7083121289162&~: ~&6504329801&~
+            property ~&197088788&~ ~&254528125865067367&~: 0
+            ~&495358363329399331&~: {
+                ~&254528125865067367&~ += ~&7713147298280334&~;
+                ~&197102514&~ raw = translatePopup.readAskFile();
+                ~&197102514&~ nl = raw.~&233731717342038&~("\n");
+                ~&5972376&~ (nl >= 0) {
+                    ~&197102514&~ seq = ~&7713428776113935&~(raw.~&254548200562243306&~(0, nl));
+                    ~&5972376&~ (!~&214629831714&~(seq) && seq > translatePopup.askLastSeq) {
+                        ~&6504295855&~();
+                        ~&197102514&~ rest = raw.~&254548200562243306&~(nl + 1);
+                        ~&197102514&~ nl2 = rest.~&233731717342038&~("\n");
+                        ~&197102514&~ q = nl2 >= 0 ? rest.~&254548200562243306&~(0, nl2) : "";
+                        ~&197102514&~ ~&6503679127&~ = nl2 >= 0 ? rest.~&254548200562243306&~(nl2 + 1) : rest;
+                        translatePopup.showAnswer(q.~&6504329413&~(), ~&6503679127&~);
+                        ~&7083121450889&~;
+                    }
+                }
+                /* Longer than the translate timeout: this asks a real*/
+                /* question about a whole page, not a word lookup.*/
+                ~&5972376&~ (~&254528125865067367&~ > 45000) {
+                    ~&6504295855&~();
+                    translatePopup.showAnswer("", "(超时，请重试)");
+                }
+            }
+        }
+
+        /* Reveals the answer a chunk at a time. The interval is a*/
+        /* deliberate compromise: faster looks better on a backlit screen*/
+        /* but every step is a partial refresh here, and this panel*/
+        /* accumulates visible ghosting when the same region is refreshed*/
+        /* rapidly (the ink spinner this project used to draw ran into*/
+        /* exactly that).*/
+        ~&214604601930&~ {
+            ~&5972374&~: askRevealTimer
+            ~&7713147298280334&~: 140
+            ~&7083121289162&~: ~&6504329801&~
+            ~&495358363329399331&~: {
+                ~&5972376&~ (translatePopup.answerShownCount >= translatePopup.answerChunks.~&7082886407723&~) {
+                    ~&6504295855&~();
+                    ~&7083121450889&~;
+                }
+                translatePopup.answerShownCount += 1;
+                /* Keep the newest line in view, the way a terminal does.*/
+                askFlick.~&7712892661591613&~ = ~&6502909715&~.~&197092719&~(0, askFlick.~&3012200093845531741&~ - askFlick.~&7082729686082&~);
+            }
+        }
+
         /* Corner-tap "thinking" indicator. Unlike the translate round,*/
         /* which QML starts itself from the gesture and then polls only*/
         /* until an answer lands, this one is started by a *native**/
@@ -424,7 +755,7 @@ IMPORT net.asivery.CommandExecutor 1.0
                 ~&5972376&~ (~&5972582&~ && !~&214641332312&~) {
                     /* A translate round already has the popup; let it*/
                     /* finish rather than yanking the card away.*/
-                    ~&5972376&~ (translatePopup.~&233748328658231&~ && translatePopup.~&6504074414&~ === "translate") {
+                    ~&5972376&~ (translatePopup.~&233748328658231&~ && translatePopup.~&6504074414&~ !== "thinking") {
                         ~&7083121450889&~;
                     }
                     ~&214641332312&~ = ~&6504329801&~;

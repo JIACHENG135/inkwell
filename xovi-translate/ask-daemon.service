@@ -1,0 +1,14 @@
+[Unit]
+Description=ask_daemon (five-finger-press "ask Gemini about this page" popup)
+After=xovi-start.service xochitl.service goMarkableStream.service
+Requires=xovi-start.service xochitl.service goMarkableStream.service
+
+[Service]
+Type=simple
+ExecStart=/home/root/ask_daemon
+EnvironmentFile=/home/root/.config/rm-agent.env
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
