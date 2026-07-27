@@ -58,7 +58,7 @@ h2{font-size:clamp(26px,3.6vw,38px);line-height:1.4;font-weight:600;letter-spaci
 .lede+.lede{margin-top:14px}
 
 .fig{background:var(--paper-deep);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 1px 0 #fff inset}
-.fig img,.fig video{border-radius:8px;width:100%;background:#fff}
+.fig img,.fig video{border-radius:8px;width:100%;background:#fff;border:1px solid var(--line)}
 .cap{margin-top:12px;font-size:13.5px;color:var(--gray);text-align:center}
 
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:44px}
@@ -110,8 +110,8 @@ footer a:hover{text-decoration:underline}
     <span class="note">支持 reMarkable 2 与 Paper Pro · 不用连电脑</span>
   </div>
   <div class="fig" style="margin-top:52px;max-width:560px">
-    <img src="assets/hero.svg" alt="设备录屏：写下手写问题，点一下左下角，答案以笔迹逐笔写出">
-    <div class="cap">在纸上写问题，点一下左下角</div>
+    <video src="assets/draw.mp4" poster="assets/draw-poster.jpg" autoplay muted loop playsinline preload="metadata" aria-label="设备录屏：写下「Draw a Naruto, running!」，点一下角落，鸣人被一笔一笔画在纸上"></video>
+    <div class="cap">写下「Draw a Naruto, running!」，点一下角落</div>
   </div>
 </section>
 
@@ -119,13 +119,13 @@ footer a:hover{text-decoration:underline}
   <div class="split">
     <div>
       <div class="kicker">笔 迹 回 答</div>
-      <h2>它写字，不是贴图</h2>
-      <p class="lede">答案是用平板自己的笔来写的。所以它和你的字并排躺在同一页上，能被橡皮擦掉，能被圈起来，能跟着页面一起翻——它就是墨迹本身。</p>
-      <p class="lede">写在哪里也是有讲究的：从你上次落笔的位置开始往下写，而不是丢在页面正中央，盖掉你自己的东西。</p>
+      <h2>它落笔，不是贴图</h2>
+      <p class="lede">回答是用平板自己的笔画出来的。所以它和你的字并排躺在同一页上，能被橡皮擦掉，能被圈起来，能跟着页面一起翻——它就是墨迹本身。</p>
+      <p class="lede">落笔的位置也是有讲究的：从你上次写字的地方接着往下走，而不是丢在页面正中央，盖掉你自己的东西。</p>
     </div>
     <div class="fig">
-      <img src="assets/hero.svg" alt="设备录屏：答案以真实笔迹逐笔写在页面上">
-      <div class="cap">答案一笔一笔出现</div>
+      <video src="assets/hero.mp4" poster="assets/hero-poster.jpg" autoplay muted loop playsinline preload="metadata" aria-label="设备录屏：写下一道定积分并要求画出曲线，图像被逐笔画在题目下方"></video>
+      <div class="cap">写下积分题，它在题目下方画出曲线</div>
     </div>
   </div>
 </section>
@@ -135,11 +135,12 @@ footer a:hover{text-decoration:underline}
     <div>
       <div class="kicker">不 只 是 答 题</div>
       <h2>让它画，它就画</h2>
-      <p class="lede">写一句「画一只猪」，点一下角落，简笔画就落在纸上。讲解一个概念时随手要一张示意图，比打字描述半天要快得多。</p>
+      <p class="lede">写一句「画一只跑起来的鸣人」，点一下角落，人就落在纸上。讲一个概念时随手要一张示意图，比打字描述半天要快得多。</p>
+      <p class="lede">题目里的图也一样：一条曲线、一块阴影面积、一棵树，它直接画给你看，而不是用文字绕着描述。</p>
     </div>
     <div class="fig">
-      <img src="assets/draw.svg" alt="设备录屏：写下画图要求，点角落后简笔画被画在页面上">
-      <div class="cap">写下要求，它把画画出来</div>
+      <img src="assets/ask-diagram.png" alt="设备截图：回答里浮出的树形示意图，标注了每一次倍增跳跃">
+      <div class="cap">需要图的时候，它就配一张图</div>
     </div>
   </div>
 </section>
@@ -152,11 +153,11 @@ footer a:hover{text-decoration:underline}
   </div>
   <div class="grid" style="grid-template-columns:1fr 1fr;max-width:760px;margin-left:auto;margin-right:auto">
     <div class="fig">
-      <img src="assets/translate.svg" alt="设备录屏：圈住一个英文单词，三指按下后浮出中文释义与例句">
+      <video src="assets/translate.mp4" poster="assets/translate-poster.jpg" autoplay muted loop playsinline preload="metadata" aria-label="设备录屏：圈住 sulphate particles，三指按下后浮出中文释义与例句"></video>
       <div class="cap">圈词即译</div>
     </div>
     <div class="fig">
-      <img src="assets/review.svg" alt="设备录屏：点右下角进入生词复习，卡片逐张出现">
+      <video src="assets/retrieve.mp4" poster="assets/retrieve-poster.jpg" autoplay muted loop playsinline preload="metadata" aria-label="设备录屏：复习卡片浮出，可选择「认识」或「不认识」"></video>
       <div class="cap">生词自己回来找你</div>
     </div>
   </div>
@@ -179,8 +180,8 @@ footer a:hover{text-decoration:underline}
     <p class="lede">把不懂的地方圈起来，五根手指按一下。它会看着这一整页回答你——因为一个问题往往指着旁边的图、上面的推导，光看圈住的那几个字是答不了的。</p>
   </div>
   <div class="fig" style="max-width:560px;margin:44px auto 0">
-    <img src="assets/ask.svg" alt="设备录屏：圈住内容后五指按下，卡片弹出，回答逐词浮现">
-    <div class="cap">回答一词一词地浮出来</div>
+    <video src="assets/ask.mp4" poster="assets/ask-poster.jpg" autoplay muted loop playsinline preload="metadata" aria-label="设备录屏：手写一个关于倍增求 LCA 的问题，五指按下后卡片弹出，回答与示意图逐步浮现"></video>
+    <div class="cap">写下问题，五指一按，卡片浮在页面上</div>
   </div>
   <div class="grid">
     <div class="card">
@@ -189,22 +190,16 @@ footer a:hover{text-decoration:underline}
     </div>
     <div class="card">
       <h3>公式是排好版的</h3>
-      <p>分式有真正的横线，根号罩得住里面的式子，上下标该大就大该小就小。不是一串你得在脑子里翻译的符号。</p>
+      <p>上标下标该大就大该小就小，分式有真正的横线，根号罩得住里面的式子。不是一串你得在脑子里翻译的符号。</p>
     </div>
     <div class="card">
       <h3>讲不清的，它画给你看</h3>
       <p>问一个东西是怎么运转的，回答里可能就浮出一张示意图。Paper Pro 上它还是彩色的。</p>
     </div>
   </div>
-  <div class="split" style="margin-top:60px">
-    <div class="fig">
-      <img src="assets/math.svg" alt="设备截图：回答中排版好的分式与根号">
-      <div class="cap">分式、根号、上下标</div>
-    </div>
-    <div class="fig">
-      <img src="assets/diagram.svg" alt="设备截图：回答中浮出的示意图">
-      <div class="cap">需要的时候才配图</div>
-    </div>
+  <div class="fig" style="max-width:720px;margin:44px auto 0">
+    <img src="assets/ask-question.png" alt="设备截图：卡片顶部先复述它理解到的问题">
+    <div class="cap">回答之前，先把问题复述一遍</div>
   </div>
 </section>
 
@@ -233,7 +228,7 @@ footer a:hover{text-decoration:underline}
   <div class="center">
     <div class="kicker">开 始 用</div>
     <h2>装起来</h2>
-    <p class="lede">从 Releases 里下载对应你设备的那份，按仓库首页的步骤走一遍。之后就再也不用管它了。</p>
+    <p class="lede">从 Releases 里下载对应你设备的那份，照着<a href="https://github.com/JIACHENG135/inkwell/blob/main/INSTALL.zh-CN.md" style="color:var(--accent)">安装教程</a>走一遍。不想一条条敲命令的话，可以让 AI 编程助手帮你全程装完。之后就再也不用管它了。</p>
   </div>
   <table>
     <tr><th>设备</th><th>下载</th></tr>
@@ -242,7 +237,7 @@ footer a:hover{text-decoration:underline}
   </table>
   <div class="cta" style="margin-top:38px;justify-content:center">
     <a class="btn solid" href="https://github.com/JIACHENG135/inkwell/releases/latest">前往 Releases</a>
-    <a class="btn ghost" href="https://github.com/JIACHENG135/inkwell">看看仓库</a>
+    <a class="btn ghost" href="https://github.com/JIACHENG135/inkwell/blob/main/INSTALL.zh-CN.md">安装教程</a>
   </div>
 </section>
 
