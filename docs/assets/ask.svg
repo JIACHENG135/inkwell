@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="702" height="936" viewBox="0 0 702 936">
+<rect x="0" y="0" width="702" height="936" fill="#F7F6F1"/>
+<rect x="16" y="16" width="670" height="904" fill="none" stroke="#CFCEC5" stroke-width="2" stroke-dasharray="10 8" rx="10"/>
+<circle cx="351" cy="398" r="46" fill="none" stroke="#B9B8AE" stroke-width="3"/>
+<path d="M 337 376 L 373 398 L 337 420 Z" fill="#B9B8AE"/>
+<text x="351" y="498" text-anchor="middle" font-family="Songti SC, Noto Serif SC, serif" font-size="30" fill="#4A4943">⑤ 问这一页任何问题</text>
+<text x="351" y="542" text-anchor="middle" font-family="Songti SC, Noto Serif SC, serif" font-size="19" fill="#908F86">6-8s · 圈内容 → 五指按 → 回答逐词蹦出</text>
+<text x="351" y="884" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="17" fill="#B9B8AE">assets/ask.mp4</text>
+</svg>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>inkwell — 让 reMarkable 用笔迹回答你</title>
+<meta name="description" content="在 reMarkable 上写下问题，点一下角落，答案会用真正的笔迹写在纸上。圈词即译、生词复习、整页提问，全部在设备上完成，不接电脑。">
+<meta property="og:title" content="inkwell — 让 reMarkable 用笔迹回答你">
+<meta property="og:description" content="写下问题，点一下角落，答案一笔一笔写在你的纸上。">
+<meta property="og:type" content="website">
+<style>
+:root{
+  --paper:#F7F6F1; --paper-deep:#EFEEE7; --card:#FFFFFF;
+  --ink:#1C1B18; --ink-soft:#4A4943; --gray:#86857C;
+  --line:#DCDBD2; --accent:#1F4FA8; --accent-wash:#E6EDF9;
+  --serif:"Songti SC","Noto Serif SC","Noto Serif CJK SC","Source Han Serif SC","SimSun",Georgia,serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.95;-webkit-font-smoothing:antialiased}
+::selection{background:var(--accent-wash)}
+a{color:inherit}
+img,video{display:block;max-width:100%}
+
+.bar{position:sticky;top:0;z-index:50;background:rgba(247,246,241,.88);backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)}
+.bar .in{max-width:1080px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:20px}
+.brand{font-size:20px;letter-spacing:.02em;font-weight:600}
+.brand em{font-style:normal;color:var(--accent)}
+.bar nav{margin-left:auto;display:flex;gap:22px;font-size:15px;color:var(--ink-soft)}
+.bar nav a{text-decoration:none}
+.bar nav a:hover{color:var(--accent)}
+@media(max-width:720px){.bar nav{display:none}}
+
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+section{padding:88px 0}
+section+section{border-top:1px solid var(--line)}
+
+.hero{padding:96px 0 80px}
+.hero h1{font-size:clamp(34px,5.6vw,60px);line-height:1.28;letter-spacing:-.01em;font-weight:600}
+.hero h1 .u{background:linear-gradient(transparent 62%,var(--accent-wash) 62%)}
+.hero .sub{margin-top:26px;font-size:clamp(17px,2.1vw,20px);color:var(--ink-soft);max-width:38em}
+.hero .cta{margin-top:38px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.btn{display:inline-block;padding:13px 26px;border-radius:999px;text-decoration:none;font-size:16px;border:1px solid var(--ink);transition:.16s}
+.btn.solid{background:var(--ink);color:var(--paper)}
+.btn.solid:hover{background:var(--accent);border-color:var(--accent)}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+.note{font-size:14px;color:var(--gray)}
+
+.split{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
+.split.flip .fig{order:-1}
+@media(max-width:860px){.split{grid-template-columns:1fr;gap:36px}.split.flip .fig{order:0}}
+
+.kicker{font-size:14px;letter-spacing:.14em;color:var(--accent);margin-bottom:14px}
+h2{font-size:clamp(26px,3.6vw,38px);line-height:1.4;font-weight:600;letter-spacing:-.005em}
+.lede{margin-top:20px;color:var(--ink-soft);font-size:17.5px}
+.lede+.lede{margin-top:14px}
+
+.fig{background:var(--paper-deep);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 1px 0 #fff inset}
+.fig img,.fig video{border-radius:8px;width:100%;background:#fff}
+.cap{margin-top:12px;font-size:13.5px;color:var(--gray);text-align:center}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:44px}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px}
+.card h3{font-size:19px;font-weight:600;margin-bottom:10px}
+.card p{font-size:15.5px;color:var(--ink-soft);line-height:1.85}
+
+.steps{counter-reset:s;margin-top:40px;display:grid;gap:18px}
+.step{display:flex;gap:18px;align-items:flex-start}
+.step .n{flex:none;width:34px;height:34px;border-radius:999px;border:1px solid var(--ink);display:grid;place-items:center;font-size:15px}
+.step p{color:var(--ink-soft);font-size:16px}
+.step b{color:var(--ink);font-weight:600}
+
+.quiet{background:var(--paper-deep)}
+.center{text-align:center}
+.center .lede{margin-left:auto;margin-right:auto;max-width:40em}
+
+table{width:100%;border-collapse:collapse;margin-top:32px;font-size:15.5px}
+th,td{text-align:left;padding:14px 12px;border-bottom:1px solid var(--line)}
+th{color:var(--gray);font-weight:400;font-size:14px}
+code{font-family:var(--mono);font-size:13.5px;background:var(--paper-deep);padding:2px 7px;border-radius:5px}
+
+footer{padding:56px 0 72px;color:var(--gray);font-size:14.5px}
+footer a{color:var(--accent);text-decoration:none}
+footer a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+
+<div class="bar"><div class="in">
+  <span class="brand">ink<em>well</em></span>
+  <nav>
+    <a href="#write">写回来</a>
+    <a href="#read">读原版</a>
+    <a href="#ask">问一页</a>
+    <a href="#install">安装</a>
+  </nav>
+</div></div>
+
+<div class="wrap">
+
+<section class="hero">
+  <h1>写下问题，<br><span class="u">答案会写在你的纸上。</span></h1>
+  <p class="sub">不是弹出一段文字，也不是贴一张图片——是一笔一笔，用你这台 reMarkable 自己的笔迹，写在你刚才写字的地方。</p>
+  <div class="cta">
+    <a class="btn solid" href="https://github.com/JIACHENG135/inkwell/releases/latest">下载最新版本</a>
+    <a class="btn ghost" href="#install">怎么装</a>
+    <span class="note">支持 reMarkable 2 与 Paper Pro · 不用连电脑</span>
+  </div>
+  <div class="fig" style="margin-top:52px;max-width:560px">
+    <img src="assets/hero.svg" alt="设备录屏：写下手写问题，点一下左下角，答案以笔迹逐笔写出">
+    <div class="cap">在纸上写问题，点一下左下角</div>
+  </div>
+</section>
+
+<section id="write">
+  <div class="split">
+    <div>
+      <div class="kicker">笔 迹 回 答</div>
+      <h2>它写字，不是贴图</h2>
+      <p class="lede">答案是用平板自己的笔来写的。所以它和你的字并排躺在同一页上，能被橡皮擦掉，能被圈起来，能跟着页面一起翻——它就是墨迹本身。</p>
+      <p class="lede">写在哪里也是有讲究的：从你上次落笔的位置开始往下写，而不是丢在页面正中央，盖掉你自己的东西。</p>
+    </div>
+    <div class="fig">
+      <img src="assets/hero.svg" alt="设备录屏：答案以真实笔迹逐笔写在页面上">
+      <div class="cap">答案一笔一笔出现</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="split flip">
+    <div>
+      <div class="kicker">不 只 是 答 题</div>
+      <h2>让它画，它就画</h2>
+      <p class="lede">写一句「画一只猪」，点一下角落，简笔画就落在纸上。讲解一个概念时随手要一张示意图，比打字描述半天要快得多。</p>
+    </div>
+    <div class="fig">
+      <img src="assets/draw.svg" alt="设备录屏：写下画图要求，点角落后简笔画被画在页面上">
+      <div class="cap">写下要求，它把画画出来</div>
+    </div>
+  </div>
+</section>
+
+<section id="read" class="quiet">
+  <div class="center">
+    <div class="kicker">读 原 版</div>
+    <h2>圈住一个词，三指一按</h2>
+    <p class="lede">读英文原版遇到生词，不用退出、不用切换、不用打字。圈一下，三根手指按一按，释义和一句例句就浮在页面上，读完继续往下读。</p>
+  </div>
+  <div class="grid" style="grid-template-columns:1fr 1fr;max-width:760px;margin-left:auto;margin-right:auto">
+    <div class="fig">
+      <img src="assets/translate.svg" alt="设备录屏：圈住一个英文单词，三指按下后浮出中文释义与例句">
+      <div class="cap">圈词即译</div>
+    </div>
+    <div class="fig">
+      <img src="assets/review.svg" alt="设备录屏：点右下角进入生词复习，卡片逐张出现">
+      <div class="cap">生词自己回来找你</div>
+    </div>
+  </div>
+  <div class="split" style="margin-top:56px">
+    <div>
+      <h3 style="font-size:21px;margin-bottom:12px">查过的词，不会就这么算了</h3>
+      <p class="lede">每一个你查过的词都被记了下来。点一下右下角，它们按着遗忘曲线一张张回来——在你快要忘掉的那天，而不是在你早就记住之后。</p>
+    </div>
+    <div>
+      <h3 style="font-size:21px;margin-bottom:12px">整段也可以</h3>
+      <p class="lede">圈住的不只是一个词，而是一整句、一整段，那就给你整段的翻译。它会自己判断你圈的是什么。</p>
+    </div>
+  </div>
+</section>
+
+<section id="ask">
+  <div class="center">
+    <div class="kicker">问 这 一 页</div>
+    <h2>五指一按，问任何问题</h2>
+    <p class="lede">把不懂的地方圈起来，五根手指按一下。它会看着这一整页回答你——因为一个问题往往指着旁边的图、上面的推导，光看圈住的那几个字是答不了的。</p>
+  </div>
+  <div class="fig" style="max-width:560px;margin:44px auto 0">
+    <img src="assets/ask.svg" alt="设备录屏：圈住内容后五指按下，卡片弹出，回答逐词浮现">
+    <div class="cap">回答一词一词地浮出来</div>
+  </div>
+  <div class="grid">
+    <div class="card">
+      <h3>它先告诉你，它以为你在问什么</h3>
+      <p>卡片最上面是它理解的问题。答错了你一眼看得出；更要紧的是「答对了另一个问题」这种情况，没有这一行的话，你只会一头雾水。</p>
+    </div>
+    <div class="card">
+      <h3>公式是排好版的</h3>
+      <p>分式有真正的横线，根号罩得住里面的式子，上下标该大就大该小就小。不是一串你得在脑子里翻译的符号。</p>
+    </div>
+    <div class="card">
+      <h3>讲不清的，它画给你看</h3>
+      <p>问一个东西是怎么运转的，回答里可能就浮出一张示意图。Paper Pro 上它还是彩色的。</p>
+    </div>
+  </div>
+  <div class="split" style="margin-top:60px">
+    <div class="fig">
+      <img src="assets/math.svg" alt="设备截图：回答中排版好的分式与根号">
+      <div class="cap">分式、根号、上下标</div>
+    </div>
+    <div class="fig">
+      <img src="assets/diagram.svg" alt="设备截图：回答中浮出的示意图">
+      <div class="cap">需要的时候才配图</div>
+    </div>
+  </div>
+</section>
+
+<section class="quiet">
+  <div class="center">
+    <div class="kicker">它 一 直 在 那 儿</div>
+    <h2>装上就忘了它</h2>
+  </div>
+  <div class="grid">
+    <div class="card">
+      <h3>不用连电脑</h3>
+      <p>全部在平板上跑。没有配套 app，没有导入导出，不用插线，也不用先在手机上点一下。</p>
+    </div>
+    <div class="card">
+      <h3>开机就在</h3>
+      <p>跟着系统一起启动，崩了自己爬起来，放着一星期不管也还认得你的登录状态。</p>
+    </div>
+    <div class="card">
+      <h3>两台都行</h3>
+      <p>reMarkable 2 和 Paper Pro 都支持。彩色屏上示意图是彩色的，黑白屏上一样看得清。</p>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="center">
+    <div class="kicker">开 始 用</div>
+    <h2>装起来</h2>
+    <p class="lede">从 Releases 里下载对应你设备的那份，按仓库首页的步骤走一遍。之后就再也不用管它了。</p>
+  </div>
+  <table>
+    <tr><th>设备</th><th>下载</th></tr>
+    <tr><td>reMarkable 2</td><td><code>rm-agent-*-armv7-unknown-linux-musleabihf</code></td></tr>
+    <tr><td>reMarkable Paper Pro</td><td><code>rm-agent-*-aarch64-unknown-linux-musl</code></td></tr>
+  </table>
+  <div class="cta" style="margin-top:38px;justify-content:center">
+    <a class="btn solid" href="https://github.com/JIACHENG135/inkwell/releases/latest">前往 Releases</a>
+    <a class="btn ghost" href="https://github.com/JIACHENG135/inkwell">看看仓库</a>
+  </div>
+</section>
+
+<footer class="center">
+  <p>inkwell · 让 reMarkable 用笔迹回答你</p>
+  <p style="margin-top:8px">在读英文原版？还有 <a href="https://jiacheng135.github.io/rm-weread/">rm-weread</a>——把微信读书搬进 reMarkable。</p>
+</footer>
+
+</div>
+</body>
+</html>
