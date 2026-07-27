@@ -217,6 +217,15 @@ IMPORT net.asivery.CommandExecutor 1.0
                     ~&6503823200&~.~&254543497768871654&~: 24
                     ~&214622605608&~: "#222222"
                     ~&6504315758&~: "翻译中…"
+                    /* Row stacks its children on their top edges and has*/
+                    /* no vertical alignment of its own, so a ~30px label*/
+                    /* beside the 56px spinner sits visibly high. Anchors*/
+                    /* are not an option (Row rejects verticalCenter on*/
+                    /* its children); giving the label the spinner's*/
+                    /* height and centring the text within it is the*/
+                    /* positioner-safe equivalent.*/
+                    ~&7082729686082&~: spinnerIcon.~&7082729686082&~
+                    ~&6014474628714890946&~: ~&6503165774&~.~&14019785292674113803&~
                 }
             }
 

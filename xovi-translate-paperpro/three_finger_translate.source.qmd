@@ -217,6 +217,15 @@ IMPORT net.asivery.CommandExecutor 1.0
                     font.pixelSize: 24
                     color: "#222222"
                     text: "翻译中…"
+                    // Row stacks its children on their top edges and has
+                    // no vertical alignment of its own, so a ~30px label
+                    // beside the 56px spinner sits visibly high. Anchors
+                    // are not an option (Row rejects verticalCenter on
+                    // its children); giving the label the spinner's
+                    // height and centring the text within it is the
+                    // positioner-safe equivalent.
+                    height: spinnerIcon.height
+                    verticalAlignment: Text.AlignVCenter
                 }
             }
 
