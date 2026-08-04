@@ -126,10 +126,16 @@ ssh root@<设备IP> 'chmod +x /home/root/goMarkableStream'
 ```sh
 scp rm-agent-*-aarch64-unknown-linux-musl root@<设备IP>:/home/root/rm-agent
 scp rm-agent-paperpro.service root@<设备IP>:/lib/systemd/system/rm-agent.service
+scp wait-for-gomarkable.sh root@<设备IP>:/home/root/wait-for-gomarkable.sh
 scp rm-agent.env.example root@<设备IP>:/home/root/.config/rm-agent.env
-ssh root@<设备IP> 'chmod +x /home/root/rm-agent'
+ssh root@<设备IP> 'chmod +x /home/root/rm-agent /home/root/wait-for-gomarkable.sh'
 ssh root@<设备IP> 'vi /home/root/.config/rm-agent.env'   # 填写 GEMINI_API_KEY
 ```
+
+`wait-for-gomarkable.sh` 是服务在启动 rm-agent 之前先跑的那一步。goMarkableStream
+是 `Type=simple`，systemd 在 exec 的瞬间就认为它已经 active，但它接下来还要扫描
+xochitl 的内存去找 framebuffer，几秒之后才真正绑定 2001 端口。没有这个等待，
+`After=` 就是一句 systemd 兑现不了的承诺，rm-agent 会连上一个还不存在的端口。
 
 ### 3. 让两个服务开机自启
 

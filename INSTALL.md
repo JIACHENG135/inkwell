@@ -137,10 +137,17 @@ ssh root@<device-ip> 'chmod +x /home/root/goMarkableStream'
 ```sh
 scp rm-agent-*-aarch64-unknown-linux-musl root@<device-ip>:/home/root/rm-agent
 scp rm-agent-paperpro.service root@<device-ip>:/lib/systemd/system/rm-agent.service
+scp wait-for-gomarkable.sh root@<device-ip>:/home/root/wait-for-gomarkable.sh
 scp rm-agent.env.example root@<device-ip>:/home/root/.config/rm-agent.env
-ssh root@<device-ip> 'chmod +x /home/root/rm-agent'
+ssh root@<device-ip> 'chmod +x /home/root/rm-agent /home/root/wait-for-gomarkable.sh'
 ssh root@<device-ip> 'vi /home/root/.config/rm-agent.env'   # set GEMINI_API_KEY
 ```
+
+`wait-for-gomarkable.sh` is what the service runs before rm-agent itself.
+goMarkableStream is `Type=simple`, so systemd calls it active the moment it is
+exec'd — but it then scans xochitl's memory for the framebuffer and only binds
+port 2001 seconds later. Without the wait, `After=` is a promise systemd cannot
+keep, and rm-agent starts against a port that is not there yet.
 
 ### 3. Wire both services to start on boot
 

@@ -1,14 +1,19 @@
 [Unit]
 Description=rm-agent
 After=xochitl.service
-Requires=xochitl.service
+Wants=xochitl.service
+# rm-agent panics if it cannot reach xochitl at startup, and under the default
+# limit of five starts in ten seconds a burst of those panics trips the rate
+# limiter — after which systemd refuses to start the unit again at all, and the
+# agent stays down until someone notices. Never give up.
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
 ExecStart=/home/root/rm-agent
 EnvironmentFile=/home/root/.config/rm-agent.env
-Restart=on-failure
-RestartSec=2
+Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target

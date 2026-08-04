@@ -1,14 +1,25 @@
 [Unit]
 Description=rm-agent
 After=xochitl.service goMarkableStream.service
-Requires=xochitl.service goMarkableStream.service
+# Wants=, not Requires=. Under Requires= a goMarkableStream failure marks this
+# unit "dependency failed" and stops it dead, which is wrong for a backend that
+# is expected to come and go. Ordering is what matters here, and ExecStartPre=
+# below enforces the part Requires= never could.
+Wants=xochitl.service goMarkableStream.service
+# rm-agent panics if it cannot reach the screenshot API at startup. Under the
+# default limit of five starts in ten seconds, a burst of those panics while
+# goMarkableStream was still binding its port tripped the rate limiter, and
+# systemd then refused to start the unit again at all — the agent stayed down
+# for eleven hours before anyone noticed. Never give up.
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
+ExecStartPre=/home/root/wait-for-gomarkable.sh
 ExecStart=/home/root/rm-agent
 EnvironmentFile=/home/root/.config/rm-agent.env
-Restart=on-failure
-RestartSec=2
+Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
