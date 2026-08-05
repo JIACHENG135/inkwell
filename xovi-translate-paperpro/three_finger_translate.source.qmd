@@ -116,12 +116,12 @@ IMPORT net.asivery.CommandExecutor 1.0
             border.color: state === "answer" ? "#cfcfcf" : "#c0c0c0"
             border.width: 1.5
             width: state === "loading" ? 250
-                 : state === "answer" ? Math.min(touchArea.width * 0.82, 900)
+                 : state === "answer" ? Math.min(touchArea.width * 0.82, 1400)
                  : Math.min(touchArea.width * (translatePopup.longMode ? 0.8 : 0.6), translatePopup.longMode ? 820 : 640)
             // An answer is capped and scrolls rather than growing to fit:
             // a long one would otherwise cover the page it is about.
             height: state === "loading" ? loadingRow.implicitHeight + 40
-                  : state === "answer" ? Math.min(askColumn.implicitHeight + askHeader.height + 48, touchArea.height * 0.62)
+                  : state === "answer" ? Math.min(askColumn.implicitHeight + askHeader.height + 48, touchArea.height * 0.72)
                   : popupColumn.implicitHeight + 48
 
             function readResultFile() {

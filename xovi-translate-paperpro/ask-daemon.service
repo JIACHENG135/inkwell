@@ -1,14 +1,31 @@
 [Unit]
-Description=ask_daemon (five-finger-press "ask Gemini about this page" popup)
+Description=ask_daemon (five-finger question popup backend)
+# Wants/After rather than Requires: a Requires=xochitl.service unit is
+# stopped by systemd whenever xochitl is stopped — e.g. during a
+# xovi/debug patch validation — and bringing xochitl back with
+# /home/root/xovi/start never restarts it, leaving the feature silently
+# timing out. Restart=always covers starting before the API is up.
+Wants=xovi-start.service xochitl.service goMarkableStream.service
 After=xovi-start.service xochitl.service goMarkableStream.service
-Requires=xovi-start.service xochitl.service goMarkableStream.service
+# ask_daemon panics if it cannot reach the screenshot API at startup, and
+# under the default limit of five starts in ten seconds a burst of those
+# panics trips the rate limiter — after which systemd refuses to start the
+# unit again at all, and the popup stays dead until someone notices. This
+# is the same failure that took rm-agent down for eleven hours on
+# 2026-08-03. Never give up.
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
+# goMarkableStream is Type=simple, so systemd calls it active the instant
+# it is exec'd — seconds before it finishes scanning xochitl's memory and
+# binds port 2001. Without this wait, After= is a promise systemd cannot
+# keep and ask_daemon starts against a port that is not there yet.
+ExecStartPre=/home/root/wait-for-gomarkable.sh
 ExecStart=/home/root/ask_daemon
 EnvironmentFile=/home/root/.config/rm-agent.env
-Restart=on-failure
-RestartSec=2
+Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
